@@ -2,3 +2,29 @@ jp_nagios_checks
 ================
 
 Miscellaneous nagios checks
+
+
+check_init_service
+==================
+
+Checks on a Red Hat / Centos / Ubuntu / Debian system whether services in init are running.
+
+USAGE: check_init_service --services service1,service2
+
+
+PARAMETERS:
+
+	--services
+		comma separated list of services to check, at least one required
+		
+	--matchregex
+		optional regular expression to match against service svcname status
+		output. Defaults to (?:is running|start/running)
+
+INSTALLATION
+
+You must have a sudo entry for the user running this check (eg nagios)
+
+
+nagios ALL = NOPASSWD: /sbin/service * status
+
