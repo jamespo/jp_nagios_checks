@@ -1,0 +1,67 @@
+#!/usr/bin/python
+
+# check_init_service ; -*-Python-*-
+# a simple nagios check to verify if init scripts are running
+# Copyright James Powell 2013 / jamespo [at] gmail [dot] com
+# This program is distributed under the terms of the GNU General Public License v3
+
+import sys, re, os
+from optparse import OptionParser
+
+class CheckInitService(object):
+    def __init__(self, options):
+        self.services = options.services.split(',')
+        self.matchregex = options.matchregex
+
+    @staticmethod
+    def _findservice():
+        '''return full path to service command'''
+        for svc in ['/usr/sbin/service', '/sbin/service']:
+            if os.path.isfile(svc):
+                return svc
+        return None
+
+    def checkinits(self):
+        '''check init scripts statuses'''
+        self.running_services = dict()
+        self.failing_services = dict()
+        svc = self._findservice()
+        # loop round all the services
+        for service in self.services:
+            cmdline = '/usr/bin/sudo -n ' + svc + ' ' + service + ' status 2>&1'
+            initresults = [line.strip() for line in os.popen(cmdline).readlines()]
+            for res in initresults:
+                if re.search(self.matchregex, res) is not None:
+                    self.running_services[service] = res
+                    break
+                else:
+                    self.failing_services[self] = res
+        # if # of ok results == # of services checked, all ok
+        if len(self.running_services) == len(self.services):
+            return 0
+        else:
+            return 1
+
+def main():
+    parser = OptionParser()
+    parser.add_option("--services", dest="services", help="service1,service2")
+    parser.add_option("--matchregex", dest="matchregex", default="(?:is running|start/running)",
+        help="regex to match running service status")
+    (options, args) = parser.parse_args()
+    if options.services is None:
+        print "UNKNOWN: No services specified"
+        sys.exit(2)
+    ci = CheckInitService(options)
+    rc = ci.checkinits()
+    if rc == 0:
+        rcstr = 'OK: all services running (' + ','.join(ci.running_services) + ')'
+    else:
+        rcstr = 'CRITICAL: Failing (' +  ','.join(ci.failing_services) + ')'
+        if ci.running_services > 0:
+            rcstr += ' Running (' + '.'.join(ci.running_services) + ')'
+    print rcstr
+    sys.exit(rc)
+
+if __name__ == '__main__':
+    main()
+
