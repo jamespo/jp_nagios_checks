@@ -23,8 +23,9 @@ PARAMETERS:
 
 INSTALLATION
 
-You must have a sudo entry for the user running this check (eg nagios)
+You must have a sudo entry for the user running this check (eg nagios). Also ensure that
+you disable requiring a tty for this user in sudoers
 
-
+Defaults:nagios !requiretty
 nagios ALL = NOPASSWD: /sbin/service * status
 
