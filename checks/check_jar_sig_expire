@@ -1,29 +1,51 @@
 #!/usr/bin/python
 
-# check_init_service ; -*-Python-*-
+# check_jar_sig_expire ; -*-Python-*-
 # a simple nagios check to verify if given signed jar is close to expiry
 # Copyright James Powell 2013 / jamespo [at] gmail [dot] com
 # This program is distributed under the terms of the GNU General Public License v3
 
-import sys, re, os
+import sys, re, os, datetime
 from optparse import OptionParser
 
 class CheckJarSigExpire(object):
+    # certificate will expire on 06/08/13 20:11
+    date_re = re.compile(r'certificate will expire on (\d\d/\d\d/\d\d)')
+    
     def __init__(self, options):
         self.options = options
 
     def checkjar(self):
         '''check jar expiry time'''
         cmdline = self.options.jspath + ' -verify -verbose -certs ' + \
-          self.options.jar + ' 2>&1'
+            self.options.jar + ' 2>&1'
         jsresults = [line.strip() for line in os.popen(cmdline).readlines()]
         for line in jsresults:
-            if 'jar is unsigned' in line:
+            datematch = re.search(self.date_re, line)
+            if datematch is not None:
+                daydiff = self.checkdate(datematch.group(1))
+                self.status = 'jar expires in ' + str(daydiff.days) + ' days'
+                if daydiff.days <= self.options.dayscrit:
+                    return 2
+                elif daydiff.days <= self.options.dayswarn:
+                    return 1
+                else:
+                    return 0   
+            elif 'jar is unsigned' in line:
                 self.status = 'jar is unsigned'
-                return 1
-        self.status = 'jar is OK'
-        return 0
+                return 3
 
+    @staticmethod
+    def checkdate(linedate):
+        today = datetime.date.today()
+        (month, day, year) = re.split(r'/', linedate)
+        dt = datetime.date(int(year) + 2000, int(month), int(day))
+        return dt - today
+        
+        
+
+            
+    
 def main():
     parser = OptionParser()
     parser.add_option("--jspath", dest="jspath", help="full path to jarsigner",
@@ -31,8 +53,8 @@ def main():
     parser.add_option("--jar", dest="jar", help="full path to jar")
     parser.add_option("-w", dest="dayswarn", help="warning threshold (days)",
                       default=30)
-    # parser.add_option("-c", dest="dayscrit", help="critical threshold (days)",
-    #                   default=7)
+    parser.add_option("-c", dest="dayscrit", help="critical threshold (days)",
+                       default=7)
     (options, args) = parser.parse_args()
     if options.jar is None:
         print "UNKNOWN: No JAR specified"
@@ -41,8 +63,12 @@ def main():
     rc = ci.checkjar()
     if rc == 0:
         rcstr = 'OK: ' + ci.status
-    else:
+    elif rc == 1:
+        rcstr = 'WARNING: ' + ci.status
+    elif rc == 2:
         rcstr = 'CRITICAL: ' + ci.status
+    elif rc == 3:
+        rcstr = 'UNKNOWN: ' + ci.status
     print rcstr
     sys.exit(rc)
 
