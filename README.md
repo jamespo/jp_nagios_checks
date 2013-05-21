@@ -5,7 +5,8 @@ Miscellaneous nagios checks
 
 
 check_init_service
-==================
+----------
+
 
 Checks on a Red Hat / Centos / Ubuntu / Debian system whether services in init are running.
 
@@ -25,12 +26,14 @@ INSTALLATION
 
 You must have a sudo entry for the user running this check (eg nagios). Also ensure that you disable requiring a tty for this user in sudoers
 
- Defaults:nagios !requiretty
- nagios ALL = NOPASSWD: /sbin/service * status
-
+    Defaults:nagios !requiretty
+    nagios ALL = NOPASSWD: /sbin/service * status
 
 
 check_jar_sig_expire
-====================
+----------
+
 
 Checks whether the signature on a given JAR file has expired or is close to expiry.
+
+
