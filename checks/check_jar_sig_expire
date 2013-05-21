@@ -9,12 +9,13 @@ import sys, re, os, datetime
 from optparse import OptionParser
 
 class CheckJarSigExpire(object):
-    # certificate will expire on 06/08/13 20:11
+    # example line: certificate will expire on 06/08/13 20:11
     date_re = re.compile(r'certificate will expire on (\d\d/\d\d/\d\d)')
     
     def __init__(self, options):
         self.options = options
-
+        # TODO: get clean jar name
+        
     def checkjar(self):
         '''check jar expiry time'''
         cmdline = self.options.jspath + ' -verify -verbose -certs ' + \
@@ -25,7 +26,10 @@ class CheckJarSigExpire(object):
             if datematch is not None:
                 daydiff = self.checkdate(datematch.group(1))
                 self.status = 'jar expires in ' + str(daydiff.days) + ' days'
-                if daydiff.days <= self.options.dayscrit:
+                if daydiff.days < 0:
+                    self.status = 'jar has expired!'
+                    return 2
+                elif daydiff.days <= self.options.dayscrit:
                     return 2
                 elif daydiff.days <= self.options.dayswarn:
                     return 1
