@@ -8,9 +8,10 @@ Usage
 
 Create a config file in either /etc/qicinga or ~/.config/.qicinga with contents as below
 
-icinga_url = 'https://icinga.example.com/icinga/'
-username = 'myicingauser'
-password = 'mypass'
+    [Main]
+    icinga_url: https://icinga.example.com/icinga/
+    username = myicingauser
+    password = mypass
 
 As this file contains your password ENSURE it is permissioned correctly (ie chmod 0600).
 

@@ -17,7 +17,6 @@ try:
     import simplejson as json
 except ImportError:
     import json
-from myvars import * # Temp way to get user/pass
 
 logging.basicConfig()
 logger = logging.getLogger()
@@ -70,12 +69,14 @@ def parse_checks(icinga_status, options):
     return rc
 
 def readconf():
-    conffile = os.path.join(expanduser("~"), '.config', '.qicinga')
     config = ConfigParser.ConfigParser()
     config.read(['/etc/qicinga', os.path.expanduser('~/.config/.qicinga')])
+    return (config.get('Main', 'icinga_url'), config.get('Main', 'username'),
+            config.get('Main', 'password'))
 
 def main():
     logger.setLevel(logging.INFO)
+    (icinga_url, username, password) = readconf()
     parser = OptionParser()
     parser.add_option("-a", "--all", help="show all statuses",
                       action="store_true", dest="showall", default=False)
