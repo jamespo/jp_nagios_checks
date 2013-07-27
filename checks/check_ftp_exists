@@ -13,7 +13,7 @@ from ftplib import FTP
 class CheckFTPExists(object):
     def __init__(self, options):
         self.options = options
-        self.pat = '.*' + self.options.match + '.*'
+        self.pat = re.compile('.*' + self.options.match + '.*')
 
     def checkftp(self):
         '''check the ftp site'''
@@ -32,15 +32,17 @@ def main():
     parser.add_option("-s", "--server", dest="server")
     parser.add_option("-m", "--match", dest="match", help="filename pattern to match")
     (options, args) = parser.parse_args()
-    if options.username is None:
-        print "UNKNOWN: no username specified"
+    if options.username is None or options.password is None or options.server is None:
+        print "UNKNOWN: username/password/server not specified"
         sys.exit(2)
     cf = CheckFTPExists(options)
-    rc = cf.checkftp()
-    if rc > 0:
-        rcstr = 'OK: %s matches found for %s' % (rc, options.match)
+    num_matches = cf.checkftp()
+    rc = 0 # default to ok
+    if num_matches > 0:
+        rcstr = 'OK: %s matches found for %s' % (num_matches, options.match)
     else:
         rcstr = 'CRITICAL: no matches found for %s' % options.match
+        rc = 2
     print rcstr
     sys.exit(rc)
 
