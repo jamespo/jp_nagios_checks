@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+
+# check_ftp_exists ; -*-Python-*-
+# a simple nagios check to verify if files matching a pattern
+# exist on an ftp server
+# Copyright James Powell 2013 / jamespo [at] gmail [dot] com
+# This program is distributed under the terms of the GNU General Public License v3
+
+import sys, re, os
+from optparse import OptionParser
+from ftplib import FTP
+
+class CheckFTPExists(object):
+    def __init__(self, options):
+        self.options = options
+        self.pat = '.*' + self.options.match + '.*'
+
+    def checkftp(self):
+        '''check the ftp site'''
+        ftp = FTP(self.options.server, self.options.username, self.options.password)
+        #ftp.login()
+        lines = []
+        ftp.retrlines('LIST', lines.append)
+        # print lines
+        matches = [filematch for filematch in lines if re.search(self.pat, filematch) is not None]
+        return len(matches)
+
+def main():
+    parser = OptionParser()
+    parser.add_option("-u", "--username", dest="username")
+    parser.add_option("-p", "--password", dest="password")
+    parser.add_option("-s", "--server", dest="server")
+    parser.add_option("-m", "--match", dest="match", help="filename pattern to match")
+    (options, args) = parser.parse_args()
+    if options.username is None:
+        print "UNKNOWN: no username specified"
+        sys.exit(2)
+    cf = CheckFTPExists(options)
+    rc = cf.checkftp()
+    if rc > 0:
+        rcstr = 'OK: %s matches found for %s' % (rc, options.match)
+    else:
+        rcstr = 'CRITICAL: no matches found for %s' % options.match
+    print rcstr
+    sys.exit(rc)
+
+if __name__ == '__main__':
+    main()
+
