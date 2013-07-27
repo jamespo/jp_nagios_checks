@@ -75,16 +75,19 @@ def readconf():
     config = ConfigParser.ConfigParser()
     config.read(['/etc/qicinga', os.path.expanduser('~/.config/.qicinga')])
     return (config.get('Main', 'icinga_url'), config.get('Main', 'username'),
-            config.get('Main', 'password'))
+            config.get('Main', 'password'), 
+            config.getboolean('Main', 'colour') if config.has_option('Main', 'colour') else False)
 
 def main():
     logger.setLevel(logging.INFO)
-    (icinga_url, username, password) = readconf()
+    (icinga_url, username, password, colour) = readconf()
     parser = OptionParser()
     parser.add_option("-a", "--all", help="show all statuses",
                       action="store_true", dest="showall", default=False)
     parser.add_option("-c", help="colour output",
-                      action="store_true", dest="colour", default=False)
+                      action="store_true", dest="colour", default=colour)
+    parser.add_option("-b", help="no colour output",
+                      action="store_false", dest="colour")
     parser.add_option("-q", help="quiet - no output, no summary, just return code",
                       action="store_true", dest="quiet", default=False)
     (options, args) = parser.parse_args()
