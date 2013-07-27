@@ -64,7 +64,10 @@ def parse_checks(icinga_status, options):
         # TODO: colourize if selected
         sys.stdout.write('SUMMARY:  ')
         for stat in ['OK', 'WARNING', 'CRITICAL', 'UNKNOWN']:
-            sys.stdout.write('%s: %s   ' % (stat, summ[stat]))
+            prettystat = stat
+            if options.colour:
+                prettystat = colmap[stat] + str(stat) + colmap['NORM']
+            sys.stdout.write('%s: %s   ' % (prettystat, summ[stat]))
         print
     return rc
 
