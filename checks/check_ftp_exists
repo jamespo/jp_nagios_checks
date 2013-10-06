@@ -9,6 +9,7 @@
 import sys, re, os
 from optparse import OptionParser
 from ftplib import FTP
+from datetime import date, timedelta
 
 class CheckFTPExists(object):
     def __init__(self, options):
@@ -25,13 +26,20 @@ class CheckFTPExists(object):
         matches = [filematch for filematch in lines if re.search(self.pat, filematch) is not None]
         return len(matches)
 
-def main():
+def get_options():
     parser = OptionParser()
     parser.add_option("-u", "--username", dest="username")
     parser.add_option("-p", "--password", dest="password")
     parser.add_option("-s", "--server", dest="server")
     parser.add_option("-m", "--match", dest="match", help="filename pattern to match")
     (options, args) = parser.parse_args()
+    # special date match
+    if options.match == "_yesterday_":
+        options.match = (date.today() - timedelta(1)).strftime("%Y%m%d")
+    return (options, args)
+
+def main():
+    (options, args) = get_options()
     if options.username is None or options.password is None or options.server is None:
         print "UNKNOWN: username/password/server not specified"
         sys.exit(2)
