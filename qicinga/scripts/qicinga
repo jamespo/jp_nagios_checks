@@ -1,0 +1,7 @@
+#!/usr/bin/env python
+
+import qicinga
+
+if __name__ == '__main__':
+    qicinga.main()
+ 
