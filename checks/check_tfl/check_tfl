@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+
+# check_tfl - nagios check for Transport for London
+#
+# (c) James Powell / jamespo [at] gmail /  2014
+#
+# Note: Register at http://www.tfl.gov.uk/info-for/open-data-users/ for
+# access to the datafeed
+
+import urllib2
+import xml.etree.ElementTree as ET
+from collections import defaultdict
+from optparse import OptionParser
+
+class tfl_util(object):
+    @staticmethod
+    def nag_code_to_status(code, msg):
+        '''return display nagios status for code with msg appended'''
+        code2stat = { 0 : 'OK',
+                      1 : 'WARNING',
+                      2 : 'CRITICAL',
+                      3 : 'UNKNOWN'
+                      }
+        return '%s: %s' % (code2stat[code], msg)
+
+    @staticmethod
+    def dl_parse_output(lines_to_check):
+        '''download tfl xml, parse and output status'''
+        feedurl = 'http://cloud.tfl.gov.uk/TrackerNet/LineStatus'
+        try:
+            livefeed = urllib2.urlopen(feedurl)
+            livetfl = tflfeed(livefeed)
+            problemlines = livetfl.getanyproblems(lines_to_check)
+
+            if len(problemlines) > 0:
+                status = 2
+                statstr = ', '.join(problemlines)
+            else:
+                (status, statstr) = (0, 'All Lines OK')
+        except urllib2.URLError:
+            (status, statstr) = (3, 'Could not access %s' % feedurl)
+        return (status, tfl_util.nag_code_to_status(status, statstr))
+
+    @staticmethod
+    def get_cli_options():
+        parser = OptionParser()
+        parser.add_option("-l", "--lines", help="comma separated list of lines",
+                          dest="lines", default = None)
+        (options, args) = parser.parse_args()
+        if options.lines is None or options.lines == 'all':
+            return None
+        else:
+            lines = options.lines.split(',')
+            return lines
+
+
+class tflfeed(object):
+    def __init__(self, xml):
+        '''parse xml file and store results in self'''
+        #self.lines = {}
+
+        # init multi-level dict - from http://tinyurl.com/7sbnruk
+        l=lambda:defaultdict(l)
+        self.lines = l()
+
+        xmlns = '{http://webservices.lul.co.uk/}'
+        tree = ET.parse(xml)
+        root = tree.getroot()
+        linestatus = root.findall(xmlns + 'LineStatus')
+
+        for linestat in linestatus:
+            lname = linestat.find(xmlns + 'Line').attrib['Name']
+            lstat = linestat.find(xmlns + 'Status').attrib['Description']
+            lid = linestat.find(xmlns + 'Status').attrib['ID']
+            self.lines[lname]['descr'] = lstat
+            self.lines[lname]['id'] = lid
+
+    def getdescr(self, line):
+        '''return descr of supplied line'''
+        if line in self.lines:
+            return self.lines[line]['descr']
+
+    def getstatusid(self, line):
+        '''return status ID of supplied line'''
+        if line in self.lines:
+            return self.lines[line]['id']
+
+    def getanyproblems(self, lines_to_check = None):
+        '''return array of lines with problems'''
+        problines = []
+        for line in self.lines.keys():
+            # if lines_to_check specified, skip check if not required
+            if (lines_to_check is not None) and line.lower() not in lines_to_check: continue
+            if self.lines[line]['id'] != 'GS':   # GoodService
+                problines.append(line)
+        return problines
+
+# start of main program
+def main():
+    lines_to_check = tfl_util.get_cli_options()
+    (status, statstr) = tfl_util.dl_parse_output(lines_to_check)
+    print statstr
+    exit(status)
+
+if __name__ == "__main__":
+    main()
