@@ -26,7 +26,8 @@ colmap = {      # shell escape codes
     'CRITICAL'  : '\033[31;1m',
     'WARNING'   : '\033[33;1m',
     'OK'        : '\033[32;1m',
-    'UNKNOWN'   : '\033[35;1m'
+    'UNKNOWN'   : '\033[35;1m',
+    'PENDING'   : '\033[36;1m'
 }
 
 def get_page(ic_url, user, pw):
@@ -63,7 +64,7 @@ def parse_checks(icinga_status, options):
     if not options.quiet:
         # TODO: colourize if selected
         sys.stdout.write('SUMMARY:  ')
-        for stat in ['OK', 'WARNING', 'CRITICAL', 'UNKNOWN']:
+        for stat in ['OK', 'WARNING', 'CRITICAL', 'UNKNOWN', 'PENDING']:
             prettystat = stat
             if options.colour:
                 prettystat = colmap[stat] + str(stat) + colmap['NORM']
