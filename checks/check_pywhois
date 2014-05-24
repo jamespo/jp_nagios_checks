@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+
+# check_pywhois ; -*-Python-*-
+# a simple nagios check to verify if a given domain is due to expire
+# Copyright James Powell 2013 / jamespo [at] gmail [dot] com
+# This program is distributed under the terms of the GNU General Public License v3
+
+import sys, re
+import datetime
+import whois
+from optparse import OptionParser
+
+class DomainExpiry(object):
+    def __init__(self, options):
+        self.domain = options.domain
+        self.warning = options.warning
+	self.critical = options.critical
+	self.now = datetime.datetime.now()
+	
+    def check_whois(self):
+        '''check whois results for domain'''
+	try:
+	    w = whois.whois(self.domain)
+	except whois.parser.PywhoisError, e:
+	    self.info = "Unknown domain suffix for %s" % (self.domain)
+	    return 3
+	if re.search(r'no match for', w.text, re.IGNORECASE):
+	    self.info = "%s not found" % (self.domain)
+	    return 3
+	days_diff = (w.expiration_date - self.now).days
+	if days_diff < 0:
+	    self.info = "%s has EXPIRED"
+	else:
+	    self.info = "%s will expire in %s days" % (self.domain, days_diff)
+	if days_diff <= self.critical:
+	    return 2
+	elif days_diff <= self.warning:
+	    return 1
+	else:
+	    return 0
+
+def main():
+    parser = OptionParser()
+    parser.add_option("-d", "--domain", dest="domain", help="exampledomain.com")
+    parser.add_option("-w", dest="warning", default=30,
+        help="period to start warning of expiry in days")
+    parser.add_option("-c", dest="critical", default=10,
+        help="period where expiry is critical in days")
+    (options, args) = parser.parse_args()
+    if options.domain is None:
+        print "UNKNOWN: No domain specified"
+        sys.exit(3)
+    ci = DomainExpiry(options)
+    rc = ci.check_whois()
+    if rc == 0:
+        rcstr = 'OK: '
+    elif rc == 1:
+	rcstr = 'WARNING: '
+    elif rc == 2:
+        rcstr = 'CRITICAL: '
+    elif rc == 3:
+	rcstr = 'UNKNOWN: '
+    print rcstr + ci.info
+    sys.exit(rc)
+
+if __name__ == '__main__':
+    main()
+
