@@ -13,8 +13,8 @@ from optparse import OptionParser
 class DomainExpiry(object):
     def __init__(self, options):
         self.domain = options.domain
-        self.warning = options.warning
-	self.critical = options.critical
+        self.warning = int(options.warning)
+	self.critical = int(options.critical)
 	self.now = datetime.datetime.now()
 	
     def check_whois(self):
