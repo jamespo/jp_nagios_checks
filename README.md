@@ -37,3 +37,7 @@ check_jar_sig_expire
 Checks whether the signature on a given JAR file has expired or is close to expiry.
 
 
+check_pywhois
+----------
+
+Checks whether a domain name is close to expiry
