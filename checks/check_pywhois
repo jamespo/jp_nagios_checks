@@ -14,45 +14,44 @@ class DomainExpiry(object):
     def __init__(self, options):
         self.domain = options.domain
         self.warning = int(options.warning)
-    self.critical = int(options.critical)
-    self.now = datetime.datetime.now()
+        self.critical = int(options.critical)
+        self.now = datetime.datetime.now()
 
     def check_whois(self):
         '''check whois results for domain'''
-    try:
-        w = whois.whois(self.domain)
-    except whois.parser.PywhoisError, e:
-        self.info = "Unknown domain suffix for %s" % (self.domain)
-        return 3
-    if re.search(r'no match for', w.text, re.IGNORECASE):
-        self.info = "%s not found" % (self.domain)
-        return 3
-    # godaddy is not parsed correctly by library
-    if re.search(r'godaddy', w.text, re.IGNORECASE):
-       exp_date  = self.check_whois_godaddy(w.text)
-    else:
-       exp_date = w.expiration_date 
-    days_diff = (exp_date - self.now).days
-    if days_diff < 0:
-        self.info = "%s has EXPIRED"
-    else:
-        self.info = "%s will expire in %s days" % (self.domain, days_diff)
-    if days_diff <= self.critical:
-        return 2
-    elif days_diff <= self.warning:
-        return 1
-    else:
-        return 0
+        try:
+            w = whois.whois(self.domain)
+        except whois.parser.PywhoisError, e:
+            self.info = "Unknown domain suffix for %s" % (self.domain)
+            return 3
+        if re.search(r'no match for', w.text, re.IGNORECASE):
+            self.info = "%s not found" % (self.domain)
+            return 3
+        # godaddy is not parsed correctly by library
+        if re.search(r'godaddy', w.text, re.IGNORECASE):
+            exp_date  = self.check_whois_godaddy(w.text)
+        else:
+            exp_date = w.expiration_date 
+        days_diff = (exp_date - self.now).days
+        if days_diff < 0:
+            self.info = "%s has EXPIRED"
+        else:
+            self.info = "%s will expire in %s days" % (self.domain, days_diff)
+        if days_diff <= self.critical:
+            return 2
+        elif days_diff <= self.warning:
+            return 1
+        else:
+            return 0
 
     @staticmethod
     def check_whois_godaddy(whoistext):
-    '''manually search godaddy whoistext'''
-    m = re.search(r'Registrar Registration Expiration Date: (\d\d\d\d)-(\d\d)-(\d\d)',
+        '''manually search godaddy whoistext'''
+        m = re.search(r'Registrar Registration Expiration Date: (\d\d\d\d)-(\d\d)-(\d\d)',
               whoistext)
-    year, mon, day = m.group(1), m.group(2), m.group(3)
-    strdate = "%s%s%s" % (year, mon, day)
-    return datetime.datetime.strptime(strdate, "%Y%m%d")
-
+        year, mon, day = m.group(1), m.group(2), m.group(3)
+        strdate = "%s%s%s" % (year, mon, day)
+        return datetime.datetime.strptime(strdate, "%Y%m%d")
 
 def main():
     parser = OptionParser()
@@ -70,11 +69,11 @@ def main():
     if rc == 0:
         rcstr = 'OK: '
     elif rc == 1:
-    rcstr = 'WARNING: '
+        rcstr = 'WARNING: '
     elif rc == 2:
         rcstr = 'CRITICAL: '
     elif rc == 3:
-    rcstr = 'UNKNOWN: '
+        rcstr = 'UNKNOWN: '
     print rcstr + ci.info
     sys.exit(rc)
 
