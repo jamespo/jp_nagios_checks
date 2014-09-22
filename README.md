@@ -4,13 +4,13 @@ jp_nagios_checks
 Miscellaneous nagios checks
 
 
-check_init_service
+check\_init\_service
 ----------
 
 
 Checks on a Red Hat / Centos / Ubuntu / Debian system whether services in init are running.
 
-USAGE: check_init_service --services service1,service2
+USAGE: check\_init\_service --services service1,service2
 
 
 PARAMETERS:
@@ -30,7 +30,7 @@ You must have a sudo entry for the user running this check (eg nagios). Also ens
     nagios ALL = NOPASSWD: /sbin/service * status
 
 
-check_jar_sig_expire
+check\_jar\_sig\_expire
 ----------
 
 
@@ -41,3 +41,15 @@ check_pywhois
 ----------
 
 Checks whether a domain name is close to expiry
+
+
+check_c2c
+--------
+
+Checks if C2C trains are running on schedule.
+
+Usage: check_c2c.py -f [fromstationcode] -t [tostationcode]
+
+eg for Southend Central to Limehouse
+
+check_c2c.py -f SOC -t LHS
