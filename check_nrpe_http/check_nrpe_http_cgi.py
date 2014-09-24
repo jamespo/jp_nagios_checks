@@ -64,8 +64,12 @@ def main():
         try:
             check_results['output'] = subprocess.check_output([fullcheck, args]).rstrip()
             check_results['returncode'] = 0
-        except (subprocess.CalledProcessError, OSError) as e:
-            # check execution failed, return unknown
+        except subprocess.CalledProcessError as e:
+            # non-zero returncode, ie - check failed
+            check_results['output'] = e.output
+            check_results['returncode'] = e.returncode
+        except OSError as e:
+            # check execution failed (eg binary not present), return unknown
             check_results['output'] = e[1]
             check_results['returncode']= 3
 
