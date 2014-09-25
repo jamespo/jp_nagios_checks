@@ -1,0 +1,52 @@
+#!/usr/bin/env python
+
+# check_pycurl ; -*-Python-*-
+# Copyright James Powell 2014 / jamespo [at] gmail [dot] com
+
+import json
+import pycurl
+import cStringIO
+import sys
+import urllib2
+from optparse import OptionParser
+
+def get_cli_options():
+    parser = OptionParser()
+    parser.add_option("-u", "--url", dest="url")
+    parser.add_option("-c", "--check", dest="check")
+    parser.add_option("-a", "--args", dest="args", default="")
+    (options, args) = parser.parse_args()
+    return options
+
+def print_results(rc, status):
+    print status
+    sys.exit(rc)
+
+def send_request(url):
+    c = pycurl.Curl()
+    c.setopt(c.URL, url)
+    buf = cStringIO.StringIO()
+    c.setopt(c.WRITEFUNCTION, buf.write)
+    c.perform()
+    content = buf.getvalue()
+    return content
+
+def decode_json(json_output):
+    results = json.loads(json_output)
+    return (str(results['output']), results['returncode'])
+
+def main():
+    options = get_cli_options()
+    if options.url is None or options.check is None:
+        print_results(3, 'No URL / check specified')
+    else:
+        output = send_request("%s?check=%s&args=%s" \
+                              % (options.url, options.check,
+                                 urllib2.quote(options.args)))
+        (results, returncode) = decode_json(output)
+        print_results(returncode, results)
+    # TODO: add timeout, check other error conditions
+
+if __name__ == '__main__':
+    main()
+

@@ -53,3 +53,14 @@ Usage: check_c2c.py -f [fromstationcode] -t [tostationcode]
 eg for Southend Central to Limehouse
 
 check_c2c.py -f SOC -t LHS
+
+
+check\_nrpe\_http
+---------
+
+An alternative transport for remote nagios checks than NRPE - HTTP to
+get through firewalls etc.
+
+Install check\_nrpe\_http\_cgi.py as a cgi script on your client server and
+use check\_nrpe\_http on your Nagios / Icinga server to call the check.
+

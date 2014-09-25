@@ -40,3 +40,4 @@ nosetests.xml
 *.iws
 .idea/
 
+.gitignore
