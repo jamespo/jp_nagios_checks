@@ -14,7 +14,8 @@ def get_cli_options():
     parser = OptionParser()
     parser.add_option("-u", "--url", dest="url")
     parser.add_option("-c", "--check", dest="check")
-    parser.add_option("-a", "--args", dest="args", default="")
+    parser.add_option("-t", "--timeout", dest="timeout", help="timeout (seconds)")
+    parser.add_option("-a", "--args", dest="args", default="arguments to check")
     (options, args) = parser.parse_args()
     return options
 
@@ -22,13 +23,18 @@ def print_results(rc, status):
     print status
     sys.exit(rc)
 
-def send_request(url):
+def send_request(url, timeout):
     c = pycurl.Curl()
     c.setopt(c.URL, url)
+    if timeout is not None:
+        c.setopt(pycurl.TIMEOUT, int(timeout))
     buf = cStringIO.StringIO()
     c.setopt(c.WRITEFUNCTION, buf.write)
-    c.perform()
-    content = buf.getvalue()
+    try:
+        c.perform()
+        content = buf.getvalue()
+    except pycurl.error as e:
+        content = '{ "output": "%s", "returncode" : 3 }' % e[1]
     return content
 
 def decode_json(json_output):
@@ -42,7 +48,8 @@ def main():
     else:
         output = send_request("%s?check=%s&args=%s" \
                               % (options.url, options.check,
-                                 urllib2.quote(options.args)))
+                                 urllib2.quote(options.args)),
+                                 options.timeout)
         (results, returncode) = decode_json(output)
         print_results(returncode, results)
     # TODO: add timeout, check other error conditions
