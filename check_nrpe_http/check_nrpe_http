@@ -38,7 +38,11 @@ def send_request(url, timeout):
     return content
 
 def decode_json(json_output):
-    results = json.loads(json_output)
+    try:
+        results = json.loads(json_output)
+    except ValueError as e:
+        results = { 'returncode' : 3,
+                    'output' : 'Invalid results - %s' % e }
     return (str(results['output']), results['returncode'])
 
 def main():
@@ -52,7 +56,6 @@ def main():
                                  options.timeout)
         (results, returncode) = decode_json(output)
         print_results(returncode, results)
-    # TODO: add timeout, check other error conditions
 
 if __name__ == '__main__':
     main()
