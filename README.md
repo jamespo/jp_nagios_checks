@@ -22,9 +22,14 @@ PARAMETERS:
 		optional regular expression to match against service svcname status
 		output. Defaults to (?:is running|start/running)
 
+	--svccmd
+		optional. specify the "service" command for your OS (eg on Centos 7
+		this would be /bin/systemctl, on Centos 6 /sbin/service, otherwise
+		it will try & guess)
+
 INSTALLATION
 
-You must have a sudo entry for the user running this check (eg nagios). Also ensure that you disable requiring a tty for this user in sudoers
+Unless you are using systemctl (ie Systemd) you must have a sudo entry for the user running this check (eg nagios). Also ensure that you disable requiring a tty for this user in sudoers
 
     Defaults:nagios !requiretty
     nagios ALL = NOPASSWD: /sbin/service * status
