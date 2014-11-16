@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # check_init_service ; -*-Python-*-
 # a simple nagios check to verify if init scripts are running
@@ -12,6 +12,7 @@ class CheckInitService(object):
     def __init__(self, options):
         self.services = options.services.split(',')
         self.matchregex = options.matchregex
+        self.svccmd = options.svccmd
 
     @staticmethod
     def _findservice():
@@ -21,21 +22,31 @@ class CheckInitService(object):
                 return svc
         return None
 
+    @staticmethod
+    def build_cmdline(svc_cmd, servicename):
+        if svc_cmd == "/bin/systemctl":
+            return "%s is-active %s" % (svc_cmd, servicename)
+        else:
+            return '/usr/bin/sudo -n ' + svc_cmd + ' ' + servicename + ' status 2>&1'
+
     def checkinits(self):
         '''check init scripts statuses'''
         self.running_services = dict()
         self.failing_services = dict()
-        svc = self._findservice()
+        if self.svccmd is None: 
+            svc_cmd = self._findservice()
+        else:
+            svc_cmd = self.svccmd
         # loop round all the services
-        for service in self.services:
-            cmdline = '/usr/bin/sudo -n ' + svc + ' ' + service + ' status 2>&1'
+        for servicename in self.services:
+            cmdline = self.build_cmdline(svc_cmd, servicename)
             initresults = [line.strip() for line in os.popen(cmdline).readlines()]
             for res in initresults:
                 if re.search(self.matchregex, res) is not None:
-                    self.running_services[service] = res
+                    self.running_services[servicename] = res
                     break
                 else:
-                    self.failing_services[self] = res
+                    self.failing_services[servicename] = res
         # if # of ok results == # of services checked, all ok
         if len(self.running_services) == len(self.services):
             return 0
@@ -45,8 +56,9 @@ class CheckInitService(object):
 def main():
     parser = OptionParser()
     parser.add_option("--services", dest="services", help="service1,service2")
-    parser.add_option("--matchregex", dest="matchregex", default="(?:is running|start/running)",
+    parser.add_option("--matchregex", dest="matchregex", default="(?:^active|is running|start/running)",
         help="regex to match running service status")
+    parser.add_option("--svccmd", dest="svccmd", help="full path to command to run for check")
     (options, args) = parser.parse_args()
     if options.services is None:
         print "UNKNOWN: No services specified"
@@ -57,7 +69,7 @@ def main():
         rcstr = 'OK: all services running (' + ','.join(ci.running_services) + ')'
     else:
         rcstr = 'CRITICAL: Failing (' +  ','.join(ci.failing_services) + ')'
-        if ci.running_services > 0:
+        if len(ci.running_services) > 0:
             rcstr += ' Running (' + '.'.join(ci.running_services) + ')'
     print rcstr
     sys.exit(rc)
