@@ -9,6 +9,7 @@ import re
 import sys
 import json
 import ConfigParser
+import shlex
 import cgi
 import cgitb    # DEBUG
 cgitb.enable()  # DEBUG
@@ -43,22 +44,22 @@ def print_results(results):
 def run_check(conf):
     '''get & verify cgi arguments then run the check'''
     form = cgi.FieldStorage()
-    args  = form.getfirst("args", "")
+    args  = shlex.split(form.getfirst("args", ""))
     check  = form.getfirst("check", "")
     check_results = {}
 
     # verify check isn't dir traversal attempt, etc
     if not re.match('\w+\.?\w*$', check):
-        print_results({ 'output' : 'check badly formed', 
-                        'returncode' : 3 })
-        sys.exit()
+        return({ 'output' : 'check badly formed', 
+                 'returncode' : 3 })
 
     plugin_dir = conf.get('main', 'plugin_dir')
     fullcheck = os.path.join(plugin_dir, check)
 
     # run the check
     try:
-        check_results['output'] = subprocess.check_output([fullcheck, args]).rstrip()
+        args.insert(0, fullcheck)
+        check_results['output'] = subprocess.check_output(args).rstrip()
         check_results['returncode'] = 0
     except subprocess.CalledProcessError as e:
         # non-zero returncode, ie - check failed
