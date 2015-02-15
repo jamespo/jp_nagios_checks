@@ -25,7 +25,6 @@ Configure <code>check\_nrpe\_http_cgi.py</code> to run as a CGI under your webse
 Install the conf file <code>/etc/check\_nrpe\_http.conf</code>, options:
 
     [main]
-    debug: False
     secure: False
     plugin_dir: /usr/local/nagios4/libexec
     allowed_ip: 127.0.0.1
