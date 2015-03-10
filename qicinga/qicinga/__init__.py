@@ -11,6 +11,7 @@ import os.path
 from optparse import OptionParser
 from collections import defaultdict
 import logging
+import socket
 import sys
 import pprint
 try:
@@ -30,9 +31,9 @@ colmap = {      # shell escape codes
     'PENDING'   : '\033[36;1m'
 }
 
-def get_page(ic_url, user, pw):
+def get_page(ic_url, user, pw, hostname):
     '''reads icinga all status page and returns in json'''
-    json_all_hosts_services = 'cgi-bin/status.cgi?host=all&style=detail&jsonoutput'
+    json_all_hosts_services = 'cgi-bin/status.cgi?host=%s&style=detail&jsonoutput' % hostname
     url = ic_url + json_all_hosts_services
     logger.debug('url: ' + url)
     # authenticate
@@ -79,9 +80,7 @@ def readconf():
             config.get('Main', 'password'), 
             config.getboolean('Main', 'colour') if config.has_option('Main', 'colour') else False)
 
-def main():
-    logger.setLevel(logging.INFO)
-    (icinga_url, username, password, colour) = readconf()
+def get_options(colour):
     parser = OptionParser()
     parser.add_option("-a", "--all", help="show all statuses",
                       action="store_true", dest="showall", default=False)
@@ -91,8 +90,20 @@ def main():
                       action="store_false", dest="colour")
     parser.add_option("-q", help="quiet - no output, no summary, just return code",
                       action="store_true", dest="quiet", default=False)
+    parser.add_option("-x", help="hostname - AUTOSHORT / AUTOLONG",
+                      dest="hostname", default="all")
     (options, args) = parser.parse_args()
-    data = get_page(icinga_url, username, password)
+    if options.hostname == 'AUTOSHORT':
+        options.hostname = socket.gethostname()
+    elif options.hostname == 'AUTOLONG':
+        options.hostname = socket.getfqdn() 
+    return options
+
+def main():
+    logger.setLevel(logging.INFO)
+    (icinga_url, username, password, colour) = readconf()
+    options = get_options(colour)
+    data = get_page(icinga_url, username, password, options.hostname)
     icinga_status = read_json(data)
     logger.debug(pprint.pformat(icinga_status))
     rc = parse_checks(icinga_status, options)
