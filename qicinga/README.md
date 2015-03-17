@@ -14,6 +14,7 @@ Create a config file in either /etc/qicinga or ~/.config/.qicinga with contents 
     password: mypass
 
 As this file contains your password ENSURE it is permissioned correctly (ie chmod 0600).
+Additionally as this is just a reporting script it should be a read-only user.
 
 Options:
 
