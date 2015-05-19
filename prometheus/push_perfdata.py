@@ -6,7 +6,9 @@ from __future__ import print_function
 import sqlalchemy as sql
 import re
 import os
+import time
 import ConfigParser
+from optparse import OptionParser
 
 # ADD last_check column
 # note timestamps in milliseconds
@@ -16,6 +18,15 @@ def readconf():
     config.read(['/etc/push_perfdata.conf', 
                  os.path.expanduser('~/.config/.push_perfdata.conf')])
     return config
+
+def getoptions():
+    parser = OptionParser()
+    parser.add_option("-i", "--interval", dest="upd_interval", help="update interval (secs)", 
+                      default="0")
+    parser.add_option("-o", "--outputfile", dest="outputfile")
+    (options, args) = parser.parse_args()
+    options.upd_interval = int(options.upd_interval)
+    return options
 
 class PerfData:
     def __init__(self, db):
@@ -57,6 +68,13 @@ class PerfData:
                 label = self.cleanlabel("%s_%s_%s_%s" % (alias, displayname, "servicecheck", perflabel))
                 self.checks[label] = perfvalue
 
+    def output(self, options):
+        if options.outputfile:
+            with open(options.outputfile, "w") as f:
+                f.write(str(self))
+        else:
+            print(self)
+
     @staticmethod
     def cleanlabel(label):
         """
@@ -85,14 +103,19 @@ class PerfData:
 
 def main():
     config = readconf()
+    options = getoptions()
     db_conf_vals = tuple(config.get('Main', item) for item in 
-                          ('username','password','host','db'))
+                         ('username','password','host','db'))
     db = sql.create_engine('mysql://%s:%s@%s/%s' % db_conf_vals)
-
     pd = PerfData(db)
+    
     pd.run()
-    print(pd.checks)
-    print(pd)
+    pd.output(options)
+    if options.upd_interval > 0:
+        while(True):
+            time.sleep(options.upd_interval)
+            pd.run()
+            pd.output(options)
 
 if __name__ == '__main__':
     main()
