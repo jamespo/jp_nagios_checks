@@ -40,8 +40,8 @@ def checkfile(filename, numlines, matchregex):
         lastlines = tail(f)
     for line in lastlines:
         if re.match(matchregex, line):
-            return (0, line)
-    return (1, None)
+            return (1, line)
+    return (0, None)
 
 def main():
     parser = OptionParser()
@@ -51,10 +51,10 @@ def main():
     (options, args) = parser.parse_args()
     (rc, match) = checkfile(options.filename, int(options.numlines), options.matchregex)
     
-    if rc == 0:
-        rcstr = "OK: '%s' matched in '%s'" % (options.matchregex, match)
+    if rc == 1:
+        rcstr = "CRITICAL: '%s' matched in '%s'" % (options.matchregex, match)
     else:
-        rcstr = "CRITICAL: No match found for '%s'" % options.matchregex
+        rcstr = "OK: No match found for '%s'" % options.matchregex
     print rcstr
     sys.exit(rc)
 
