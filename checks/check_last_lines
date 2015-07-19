@@ -49,10 +49,14 @@ def main():
     parser.add_option("-n", "--numlines", dest="numlines", default="20")
     parser.add_option("-m", "--matchregex", dest="matchregex", help="regex to match running service status")
     (options, args) = parser.parse_args()
-    (rc, match) = checkfile(options.filename, int(options.numlines), options.matchregex)
-    
+    if None in (options.filename, options.matchregex):
+        (rc, match) = (3, None)
+    else:
+        (rc, match) = checkfile(options.filename, int(options.numlines), options.matchregex)
     if rc == 1:
         rcstr = "CRITICAL: '%s' matched in '%s'" % (options.matchregex, match)
+    elif rc == 3:
+        rcstr = "WARNING: No filename/regex specified"
     else:
         rcstr = "OK: No match found for '%s'" % options.matchregex
     print rcstr
