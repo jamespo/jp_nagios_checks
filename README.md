@@ -69,3 +69,13 @@ get through firewalls etc.
 Install check\_nrpe\_http\_cgi.py as a cgi script on your client server and
 use check\_nrpe\_http on your Nagios / Icinga server to call the check.
 
+
+check\_last\_lines
+---------
+
+Check the last n lines of a file (typically a logfile) for a line that matches
+a regex. If it matches, exit with CRITICAL. Use this for detecting fatal errors.
+
+Usage: check_last_lines -f FILENAME -n NUMLINES -m MATCHREGEX
+
+
