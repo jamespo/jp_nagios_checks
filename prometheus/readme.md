@@ -7,6 +7,7 @@ Python 2.6+
 sqlalchemy
 MySQL-python
 
+Icinga must be configured with ido2db to store performance data in mysql
 
 Setup
 
