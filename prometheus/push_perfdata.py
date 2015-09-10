@@ -49,7 +49,10 @@ class PerfData:
     def __str__(self):
         allchecks_str = ''
         for label, checkvalue in self.checks.iteritems():
-            allchecks_str += "%s=%s\n" % (label, checkvalue)
+            # TODO: assume all are counter for now and give dummy help label
+            allchecks_str += "# HELP %s %s\n" % (label, label)
+            allchecks_str += "# TYPE %s gauge\n" % label
+            allchecks_str += "%s %s\n" % (label, checkvalue)
         return allchecks_str
 
     def run_sql(self, sqltxt):
