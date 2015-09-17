@@ -83,10 +83,14 @@ class PerfData:
         """
         :type label: str
         Fix label according to http://prometheus.io/docs/concepts/data_model/
+        naming conventions
         """
         label = re.sub("^[^a-zA-Z_:]", "_", label)
-        # TODO: doesn't accept multiple substitutions, nasty
-        label = re.sub("[^a-zA-Z0-9_:]+", "_", label)
+        # re doesn't accept multiple substitutions, loop round until done
+        newlabel = re.sub("[^a-zA-Z0-9_:]+", "_", label)
+        while newlabel != label:
+            label = newlabel
+            newlabel = re.sub("[^a-zA-Z0-9_:]+", "_", label)
         return label.lower()
 
     @staticmethod
