@@ -64,13 +64,19 @@ def parse_checks(icinga_status, options):
                                               svc['service_description'], svc['status_information'])
     if not options.quiet:
         # TODO: colourize if selected
-        sys.stdout.write('SUMMARY:  ')
+        if not options.shortsumm:
+            sys.stdout.write('SUMMARY:  ')
         for stat in ['OK', 'WARNING', 'CRITICAL', 'UNKNOWN', 'PENDING']:
             prettystat = stat
             if options.colour:
-                prettystat = colmap[stat] + str(stat) + colmap['NORM']
-            sys.stdout.write('%s: %s   ' % (prettystat, summ[stat]))
-        print
+                prettystat = colmap[stat] + str(prettystat) + colmap['NORM']
+            if options.shortsumm:
+                # color not supported yet
+                sys.stdout.write('%s:%s ' % (stat[0], summ[stat]))
+            else:
+                sys.stdout.write('%s: %s   ' % (prettystat, summ[stat]))
+        if not options.shortsumm:
+            print
     return rc
 
 def readconf():
@@ -84,6 +90,8 @@ def get_options(colour):
     parser = OptionParser()
     parser.add_option("-a", "--all", help="show all statuses",
                       action="store_true", dest="showall", default=False)
+    parser.add_option("-s", help="short summary",
+                      action="store_true", dest="shortsumm", default=False)
     parser.add_option("-c", help="colour output",
                       action="store_true", dest="colour", default=colour)
     parser.add_option("-b", help="no colour output",
