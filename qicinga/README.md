@@ -17,12 +17,14 @@ As this file contains your password ENSURE it is permissioned correctly (ie chmo
 Additionally as this is just a reporting script it should be a read-only user.
 
 Options:
-
-	-h, --help  show this help message and exit
-	-a, --all   show all statuses (not just non-OK)
-	-c          colour output
-    -q          quiet - no output, no summary, just return code
-
+    -h, --help   show this help message and exit
+    -a, --all    show all statuses
+	-s           short summary
+	-c           colour output
+	-b           no colour output
+	-q           quiet - no output, no summary, just return code
+	-x HOSTNAME  hostname - AUTOSHORT / AUTOLONG
+			  
 
 The colour output option works best on black background terminals.
 
