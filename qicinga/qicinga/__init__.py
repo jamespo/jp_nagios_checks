@@ -62,19 +62,23 @@ def parse_checks(icinga_status, options):
             if not options.quiet:
                 print "[%s]: %s - %s (%s)" % (status, svc['host_display_name'],
                                               svc['service_description'], svc['status_information'])
+    # print summary
     if not options.quiet:
+        summary = ''
         # TODO: colourize if selected
         if not options.shortsumm:
-            sys.stdout.write('SUMMARY:  ')
+            summary += 'SUMMARY:  '
         for stat in ['OK', 'WARNING', 'CRITICAL', 'UNKNOWN', 'PENDING']:
             prettystat = stat
             if options.colour:
                 prettystat = colmap[stat] + str(prettystat) + colmap['NORM']
             if options.shortsumm:
                 # color not supported yet
-                sys.stdout.write('%s:%s ' % (stat[0], summ[stat]))
+                summary += '%s:%s ' % (stat[0:2], summ[stat])
             else:
-                sys.stdout.write('%s: %s   ' % (prettystat, summ[stat]))
+                summary += '%s: %s   ' % (prettystat, summ[stat])
+        summary = summary.rstrip()
+        sys.stdout.write(summary)
         if not options.shortsumm:
             print
     return rc
