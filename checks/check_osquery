@@ -16,8 +16,8 @@ def create_test_function(testline):
             "!=" : operator.ne,
             "contains" : operator.contains }
     pt = re.match(r'(.+) *(=|!=|>|<|contains) *(.+)$', testline)
-    (field, cmp_function, cmp_value) = (pt.group(1), pt.group(2), pt.group(3))
     if pt:
+        (field, cmp_function, cmp_value) = (pt.group(1), pt.group(2), pt.group(3))
         # return lambda with specified operator & threshold that takes results dict
         if re.match(r'\d+$', cmp_value):
             # cast to int if cmp_value is int
@@ -33,8 +33,8 @@ def check_opts():
     '''parse command line options'''
     parser = OptionParser()
     parser.add_option("-q", dest="query", help="osquery query")
-    parser.add_option("-c", dest="critical", help="critical check")
-    parser.add_option("-w", dest="warning", help="warning check")
+    parser.add_option("-c", dest="critical", help="critical check", default="")
+    parser.add_option("-w", dest="warning", help="warning check", default="")
     (options, args) = parser.parse_args()
     options.critfunc = (create_test_function(options.critical), 1, 'CRITICAL')
     options.warnfunc = (create_test_function(options.warning), 3, 'WARNING')
@@ -53,12 +53,15 @@ def main():
     query_res = run_osquery(options.query)
     if query_res.status.code != 0:
         # query failed
-        return (2, 'UNKNOWN: osquery failed')
+        return (2, "UNKNOWN: osquery '%s' failed" % options.query)
     # run checks against query results
     for check in (options.critfunc, options.warnfunc):
         # TODO: only uses first row of response at present
-        if check[0](query_res.response[0]):
-            # check succeeds
+        try:
+            check_succeeds = check[0](query_res.response[0])
+        except:
+            continue  # don't have to define warning AND critical checks
+        if check_succeeds:
             return (check[1], '%s: %s returned' % (check[2], str(query_res.response[0])))
     # no checks succeed, return OK
     return (0, 'OK: %s returned' % (str(query_res.response[0])))
