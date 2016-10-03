@@ -5,7 +5,7 @@
 # Copyright James Powell 2015 / jamespo [at] gmail [dot] com
 # This program is distributed under the terms of the GNU General Public License v3
 
-import sys, re, os
+import sys, re
 from optparse import OptionParser
 
 # from http://stackoverflow.com/questions/136168/get-last-n-lines-of-a-file-with-python-similar-to-tail
@@ -47,7 +47,7 @@ def main():
     parser = OptionParser()
     parser.add_option("-f", "--file", dest="filename")
     parser.add_option("-n", "--numlines", dest="numlines", default="20")
-    parser.add_option("-m", "--matchregex", dest="matchregex", help="regex to match running service status")
+    parser.add_option("-m", "--matchregex", dest="matchregex", help="regex to match evil log line")
     (options, args) = parser.parse_args()
     if None in (options.filename, options.matchregex):
         (rc, match) = (3, None)

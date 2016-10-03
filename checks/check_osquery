@@ -2,7 +2,7 @@
 
 # check_osquery - nagios checks using osquery
 # (c) jamespo [at] gmail [dot] com / 2016 - use as you see fit
-# USAGE: check_osquery -q 'select count(username) as ct from users' -c 'ct>100' -w 'ct>50'
+# USAGE: ./check_osquery -q 'select count(pid) as np from processes' -c 'np>300' -w 'np>50'
 
 from __future__ import print_function
 import osquery, re, operator, sys
