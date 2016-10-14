@@ -52,10 +52,11 @@ class c2c_util(object):
         else:
             departures = c2c_util.parse_page(statushtml)
             num_trains = len(departures)
-            if all([train[1] == 'On Time' for train in departures]):
+            num_ontime = len([train[1] for train in departures if train[1] == 'On Time'])
+            if num_trains == num_trains:
                 return (0, 'No delays (%s trains found)' % num_trains)
             else:
-                return (2, 'Delays found')
+                return (2, '%s/%s trains delayed' % (num_trains - num_ontime, num_trains))
 
     @staticmethod
     def dl_status_page(from_stn, to_stn):
