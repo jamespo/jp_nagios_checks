@@ -65,6 +65,13 @@ def checktime(last_checktime):
 
 def parse_checks(icinga_status, options):
     '''output from the passed datastructure'''
+    rc, summ = parse_checks_individual(icinga_status, options)
+    parse_checks_summary(summ, options)
+    return rc
+
+
+def parse_checks_individual(icinga_status, options):
+    '''print results of individual checks'''
     rc = 0
     summ = defaultdict(lambda: 0)
     # print individual check status
@@ -80,7 +87,11 @@ def parse_checks(icinga_status, options):
                 if options.showtime:
                     rstr += " - %s" % checktime(svc['last_check'])
                 print rstr
-    # print summary
+    return rc, summ
+
+
+def parse_checks_summary(summ, options):
+    '''print summary'''
     if not options.quiet:
         summary = ''
         # TODO: colourize if selected
@@ -99,7 +110,6 @@ def parse_checks(icinga_status, options):
         sys.stdout.write(summary)
         if not options.shortsumm:
             print
-    return rc
 
 
 def readconf():
