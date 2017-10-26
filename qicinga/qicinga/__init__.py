@@ -14,6 +14,7 @@ import logging
 import socket
 import sys
 import pprint
+import time
 try:
     import simplejson as json
 except ImportError:
@@ -31,6 +32,7 @@ colmap = {      # shell escape codes
     'PENDING'   : '\033[36;1m'
 }
 
+
 def get_page(ic_url, user, pw, hostname):
     '''reads icinga all status page and returns in json'''
     json_all_hosts_services = 'cgi-bin/status.cgi?host=%s&style=detail&jsonoutput' % hostname
@@ -44,15 +46,28 @@ def get_page(ic_url, user, pw, hostname):
     data = req.read()
     return data
 
+
 def read_json(icinga_json):
     '''parse json into data structure'''
     icinga_status = json.loads(icinga_json)
     return icinga_status
 
+
+def checktime(last_checktime):
+    '''strip date from last check time if it's today'''
+    # assumes date in MM-DD-YYYY
+    (checkdate, checktime) = last_checktime.split(' ')
+    if time.strftime("%m-%d-%Y") == checkdate:
+        return checktime
+    else:
+        return last_checktime
+
+
 def parse_checks(icinga_status, options):
     '''output from the passed datastructure'''
     rc = 0
     summ = defaultdict(lambda: 0)
+    # print individual check status
     for svc in icinga_status['status']['service_status']:
         status = svc['status']
         summ[status] += 1
@@ -60,8 +75,11 @@ def parse_checks(icinga_status, options):
             if status != 'OK': rc = 1
             if options.colour: status = colmap[status] + status + colmap['NORM']
             if not options.quiet:
-                print "[%s]: %s - %s (%s)" % (status, svc['host_display_name'],
-                                              svc['service_description'], svc['status_information'])
+                rstr = "[%s]: %s - %s (%s)" % (status, svc['host_display_name'],
+                                               svc['service_description'], svc['status_information'])
+                if options.showtime:
+                    rstr += " - %s" % checktime(svc['last_check'])
+                print rstr
     # print summary
     if not options.quiet:
         summary = ''
@@ -83,19 +101,25 @@ def parse_checks(icinga_status, options):
             print
     return rc
 
+
 def readconf():
+    '''read config file'''
     config = ConfigParser.ConfigParser()
     config.read(['/etc/qicinga', os.path.expanduser('~/.config/.qicinga')])
     return (config.get('Main', 'icinga_url'), config.get('Main', 'username'),
-            config.get('Main', 'password'), 
+            config.get('Main', 'password'),
             config.getboolean('Main', 'colour') if config.has_option('Main', 'colour') else False)
 
+
 def get_options(colour):
+    '''return CLI options'''
     parser = OptionParser()
     parser.add_option("-a", "--all", help="show all statuses",
                       action="store_true", dest="showall", default=False)
     parser.add_option("-s", help="short summary",
                       action="store_true", dest="shortsumm", default=False)
+    parser.add_option("-t", help="show time of last check",
+                      action="store_true", dest="showtime", default=False)
     parser.add_option("-c", help="colour output",
                       action="store_true", dest="colour", default=colour)
     parser.add_option("-b", help="no colour output",
@@ -108,8 +132,9 @@ def get_options(colour):
     if options.hostname == 'AUTOSHORT':
         options.hostname = socket.gethostname()
     elif options.hostname == 'AUTOLONG':
-        options.hostname = socket.getfqdn() 
+        options.hostname = socket.getfqdn()
     return options
+
 
 def main():
     logger.setLevel(logging.INFO)
@@ -120,6 +145,7 @@ def main():
     logger.debug(pprint.pformat(icinga_status))
     rc = parse_checks(icinga_status, options)
     sys.exit(rc)
+
 
 if __name__ == '__main__':
     main()
