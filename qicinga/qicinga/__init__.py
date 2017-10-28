@@ -55,6 +55,9 @@ def read_json(icinga_json):
 
 def checktime(last_checktime):
     '''strip date from last check time if it's today'''
+    # if check is not made yet will return N/A
+    if ' ' not in last_checktime:
+        return last_checktime
     # assumes date in MM-DD-YYYY
     (checkdate, checktime) = last_checktime.split(' ')
     if time.strftime("%m-%d-%Y") == checkdate:
