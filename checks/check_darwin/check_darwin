@@ -1,0 +1,126 @@
+#!/usr/bin/env python
+# -*- coding:utf-8 -*-
+
+# check_darwin - nagios check for National Rail
+#
+# (c) James Powell / jamespo [at] gmail /  2017
+#
+# requires nre-darwin-py
+# & a configparser format config file in /etc/check_darwin with
+# one section Main with keys wsdl and api_key
+
+from nredarwin.webservice import DarwinLdbSession
+from optparse import OptionParser
+import os
+import ConfigParser
+import json
+from cStringIO import StringIO
+
+
+class StationName(object):
+    '''converts station to name & vice versa'''
+    # use json in format of https://github.com/fasteroute/national-rail-stations/blob/master/stations.json
+    # (suggest cutting this down for actual use)
+    def __init__(self, jsonfile):
+        self.code2name_lookup = {}
+        self.name2code_lookup = {}
+        with open(jsonfile) as jsf:
+            js = json.loads(jsf.read())
+        for station in js['locations']:
+            self.code2name_lookup[station['crs']] = station['name']
+            self.name2code_lookup[station['name']] = station['crs']
+
+    def name2code(self, name):
+        '''take name return code (blank if not found)'''
+        return self.name2code_lookup.get(name, '')
+
+
+    def code2name(self, code):
+        '''take code return name (blank if not found)'''
+        return self.code2name_lookup,get(name, '')
+
+
+def nag_code_to_status(code, msg):
+    '''return display nagios status for code with msg appended'''
+    code2stat = { 0 : 'OK',
+                  1 : 'WARNING',
+                  2 : 'CRITICAL',
+                  3 : 'UNKNOWN'
+    }
+    return '%s: %s' % (code2stat[code], msg)
+
+
+def readconf():
+    '''read config file'''
+    config = ConfigParser.ConfigParser()
+    config.read(['/etc/check_darwin', os.path.expanduser('~/.config/.check_darwin')])
+    return (config.get('Main', 'api_key'), config.get('Main', 'wsdl'))
+
+def create_session(api_key, wsdl):
+    '''create darwin session'''
+    return DarwinLdbSession(wsdl=wsdl, api_key=api_key)
+
+
+def get_status(delayed_num, total_num, min_trains, from_stn, to_stn):
+    '''decide if status is acceptable'''
+    on_time = total_num - delayed_num
+    if on_time < min_trains:
+        status = 2
+    else:
+        status = 0
+    return status, nag_code_to_status(status, "%s/%s trains on time from %s to %s"
+                                      % (on_time, total_num, from_stn, to_stn))
+
+
+
+def find_delays(darwin_sess, from_stn, to_stn, min_trains, st_n):
+    '''find delays between to & from stations'''
+    board = darwin_sess.get_station_board(from_stn)
+    trains = board.train_services
+    # find trains going to our destination
+    trains_onroute = []
+    for train in trains:
+        train_details = darwin_sess.get_service_details(train.service_id)
+        for calling_point in train_details.subsequent_calling_point_lists[0].calling_points:
+            # print calling_point.location_name
+            if st_n.name2code(calling_point.location_name) == to_stn:
+                trains_onroute.append(train)
+    delayed_trains = [ train for train in trains_onroute if train.etd != 'On time' ]
+    return len(delayed_trains), len(trains_onroute)
+
+
+def get_cli_options():
+    parser = OptionParser()
+    parser.add_option("-f", "--from", help="Departure Station Code (from)",
+                      dest="from_stn", default=None)
+    parser.add_option("-t", "--to", help="Destination Station Code (to)",
+                      dest="to_stn", default=None)
+    parser.add_option("-m", "--mintrains", help="Minimum # of ontime trains",
+                      dest="min_trains", default="3")
+    parser.add_option("-j", "--jsonfile", help="Station to code lookup file",
+                      dest="jsonfile", default="stations.json")
+    (options, args) = parser.parse_args()
+    if options.from_stn is None or options.to_stn is None:
+        return (None, None, None, None)
+    else:
+        return (options.from_stn, options.to_stn,
+                int(options.min_trains), options.jsonfile)
+
+
+# start of main program
+def main():
+    from_stn, to_stn, min_trains, jsonfile = get_cli_options()
+    st_n = StationName(jsonfile)
+    if from_stn is None:
+        status, statstr = 3, nag_code_to_status(3, 'No station given')
+    else:
+        api_key, wsdl = readconf()
+        sess = create_session(api_key, wsdl)
+        delayed_num, total_num = find_delays(sess, from_stn, to_stn, min_trains, st_n)
+        status, statstr = get_status(delayed_num, total_num, min_trains, from_stn, to_stn)
+    print statstr
+    exit(status)
+
+
+if __name__ == "__main__":
+    main()
