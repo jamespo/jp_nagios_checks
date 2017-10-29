@@ -85,6 +85,7 @@ def find_delays(darwin_sess, from_stn, to_stn, min_trains, st_n):
             # print calling_point.location_name
             if st_n.name2code(calling_point.location_name) == to_stn:
                 trains_onroute.append(train)
+                break
     delayed_trains = [ train for train in trains_onroute if train.etd != 'On time' ]
     return len(delayed_trains), len(trains_onroute)
 
