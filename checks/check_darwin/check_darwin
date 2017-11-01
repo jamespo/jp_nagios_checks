@@ -61,10 +61,14 @@ def create_session(api_key, wsdl):
     return DarwinLdbSession(wsdl=wsdl, api_key=api_key)
 
 
-def get_status(delayed_num, total_num, min_trains, from_stn, to_stn):
+def get_status(delayed_num, total_num, min_trains, min_ratio, from_stn, to_stn):
     '''decide if status is acceptable'''
+    if total_num == 0:
+        status = 2
+        return status, nag_code_to_status(status, "No trains found")
     on_time = total_num - delayed_num
-    if on_time < min_trains:
+    on_time_ratio = float(on_time) / float(total_num)
+    if on_time < min_trains or on_time_ratio < min_ratio:
         status = 2
     else:
         status = 0
@@ -73,13 +77,14 @@ def get_status(delayed_num, total_num, min_trains, from_stn, to_stn):
 
 
 
-def find_delays(darwin_sess, from_stn, to_stn, min_trains, st_n):
+def find_delays(darwin_sess, from_stn, to_stn, st_n):
     '''find delays between to & from stations'''
     board = darwin_sess.get_station_board(from_stn)
     trains = board.train_services
     # find trains going to our destination
     trains_onroute = []
     for train in trains:
+        # TODO: cache these details by service_id
         train_details = darwin_sess.get_service_details(train.service_id)
         for calling_point in train_details.subsequent_calling_point_lists[0].calling_points:
             # print calling_point.location_name
@@ -98,6 +103,8 @@ def get_cli_options():
                       dest="to_stn", default=None)
     parser.add_option("-m", "--mintrains", help="Minimum # of ontime trains",
                       dest="min_trains", default="3")
+    parser.add_option("-r", "--minratio", help="Minimum # of ontime trains",
+                      dest="min_ratio", default="0.5")
     parser.add_option("-j", "--jsonfile", help="Station to code lookup file",
                       dest="jsonfile", default="stations.json")
     (options, args) = parser.parse_args()
@@ -105,20 +112,21 @@ def get_cli_options():
         return (None, None, None, None)
     else:
         return (options.from_stn, options.to_stn,
-                int(options.min_trains), options.jsonfile)
+                int(options.min_trains), options.jsonfile,
+                float(options.min_ratio))
 
 
 # start of main program
 def main():
-    from_stn, to_stn, min_trains, jsonfile = get_cli_options()
+    from_stn, to_stn, min_trains, jsonfile, min_ratio = get_cli_options()
     st_n = StationName(jsonfile)
     if from_stn is None:
         status, statstr = 3, nag_code_to_status(3, 'No station given')
     else:
         api_key, wsdl = readconf()
         sess = create_session(api_key, wsdl)
-        delayed_num, total_num = find_delays(sess, from_stn, to_stn, min_trains, st_n)
-        status, statstr = get_status(delayed_num, total_num, min_trains, from_stn, to_stn)
+        delayed_num, total_num = find_delays(sess, from_stn, to_stn, st_n)
+        status, statstr = get_status(delayed_num, total_num, min_trains, min_ratio, from_stn, to_stn)
     print statstr
     exit(status)
 

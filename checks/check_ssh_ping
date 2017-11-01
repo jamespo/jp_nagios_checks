@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+
+# check_ssh_ping ; -*-Python-*-
+
+import paramiko
+import sys
+from optparse import OptionParser
+
+def getopts():
+    parser = OptionParser()
+    parser.add_option("-u", dest="user")
+    parser.add_option("-p", dest="port")
+    parser.add_option("-s", dest="server")
+    parser.add_option("-c", dest="command")
+    (options, args) = parser.parse_args()
+    return (options.user, int(options.port), options.server, options.command)
+
+def main():
+    (user, port, server, command) = getopts()
+    ssh = paramiko.SSHClient()
+    ssh.load_system_host_keys()
+    ssh.connect(server, username=user, port=port)
+    stdin, stdout, stderr = ssh.exec_command(command)
+    rc = stdout.channel.recv_exit_status() 
+    print stdout.read()
+    sys.exit(rc)
+
+if __name__ == '__main__':
+    main()
