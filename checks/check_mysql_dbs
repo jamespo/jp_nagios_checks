@@ -1,0 +1,25 @@
+#!/bin/bash
+
+# check_mysql_dbs - run mysqlcheck as nagios check
+# (c) jamespo [at] gmail [dot] com 2017
+
+# source credentials / conf
+# example contents:
+# MYUSER=root
+# MYPASS=mysecretpassword
+# MYIGNORE="(OK$|hitcounter|locks with log tables|_log$|doesn't support check)"
+
+. /etc/.check_mysql_dbs_conf
+
+# If DBs OK, output should be empty
+MYCHECK=$(mysqlcheck -u $MYUSER -p${MYPASS} --all-databases 2>&1 | egrep -v "${MYIGNORE}")
+
+# echo $MYCHECK
+
+if [[ -z "$MYCHECK" ]]; then
+    echo "OK: No mysql errors reported"
+    exit 0
+else
+    echo "CRITICAL: $MYCHECK"
+    exit 1
+fi
