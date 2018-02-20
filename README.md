@@ -86,3 +86,10 @@ Check the last n lines of a file (typically a logfile) for a line that matches
 a regex. If it matches, exit with CRITICAL. Use this for detecting fatal errors.
 
 Usage: check_last_lines -f FILENAME -n NUMLINES -m MATCHREGEX
+
+
+check\_mysql\_dbs
+----------
+
+Check integrity of your mysql databases.
+
