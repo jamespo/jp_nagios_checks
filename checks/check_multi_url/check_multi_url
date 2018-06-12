@@ -1,0 +1,43 @@
+#!/usr/bin/env python3
+
+# check_multi_url ; -*-Python-*-
+# a simple nagios check to validate multiple URLs in parallel
+# Copyright James Powell 2018 / jamespo [at] gmail [dot] com
+# This program is distributed under the terms of the GNU General Public License v3
+
+import asyncio
+import aiohttp
+import time
+
+# https://pawelmhm.github.io/asyncio/python/aiohttp/2016/04/22/asyncio-aiohttp.html
+
+urls = ['http://slowwly.robertomurray.co.uk/delay/3000/url/http://www.google.co.uk', 'http://httpbin.org/get', 'http://jamespo.org.uk', 'https://api.ipify.org/', 'http://bbc.co.uk', 'https://www.google.co.uk', 'http://slowwly.robertomurray.co.uk/delay/1000/url/http://bbc.co.uk']
+
+async def status(resp):
+    return resp.status
+
+async def fetch(url, session):
+    async with session.get(url) as resp:
+        #return await (resp.status, resp.text())
+        # return await resp.text(), url
+        # return await status(resp)
+        return await resp.text(), resp.status, url
+
+
+async def main():
+    jar = aiohttp.DummyCookieJar()
+    tasks = []
+    async with aiohttp.ClientSession(cookie_jar=jar) as session:
+        for url in urls:
+            # print("%s - %s", url, time.time())
+            tasks.append(asyncio.ensure_future(fetch(url, session)))
+
+        responses = await asyncio.gather(*tasks)
+
+        for text, status, url in responses:
+            print(status, url)
+
+start_time = float(time.time())
+loop = asyncio.get_event_loop()
+loop.run_until_complete(main())
+print('took %.3f seconds' % (time.time() - start_time))
