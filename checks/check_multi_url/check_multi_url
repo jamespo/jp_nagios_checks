@@ -5,39 +5,90 @@
 # Copyright James Powell 2018 / jamespo [at] gmail [dot] com
 # This program is distributed under the terms of the GNU General Public License v3
 
+from collections import namedtuple
 import asyncio
 import aiohttp
 import time
+import yaml
+from optparse import OptionParser
 
 # https://pawelmhm.github.io/asyncio/python/aiohttp/2016/04/22/asyncio-aiohttp.html
 
-urls = ['http://slowwly.robertomurray.co.uk/delay/3000/url/http://www.google.co.uk', 'http://httpbin.org/get', 'http://jamespo.org.uk', 'https://api.ipify.org/', 'http://bbc.co.uk', 'https://www.google.co.uk', 'http://slowwly.robertomurray.co.uk/delay/1000/url/http://bbc.co.uk']
+results = []  # store results of url fetch
 
-async def status(resp):
-    return resp.status
+
+class MultiCheck():
+    '''parse yaml, run checks'''
+
+    def __init__(self, runfile):
+        self.options = {}
+        self.options['timeout'] = 20
+        self.options['defaultcheck'] = 'code:200'
+        self.runyaml = self.parse_runfile(runfile)
+
+    @staticmethod
+    def parse_runfile(runfile):
+        '''parse runfile & create check objects'''
+        with open(runfile) as f:
+            return yaml.load(f)
+
+    @staticmethod
+    def check_result(text, status, url, test):
+        '''individually check page result'''
+        checktype, checkmatch = test.split(':', 1)
+        if checktype == 'code':
+            # http status code check
+            return int(checkmatch) == int(status)
+        elif checktype == 're':
+            # regexp match check
+            search_res = re.search(checkmatch, self.content, re.MULTILINE)
+            return search_res is not None
+
+
+    def check_all_results(self, results):
+        '''check if results match tests'''
+        for result, urltest in zip(results, self.runyaml['urls']):
+            if 'test' not in urltest:
+                cr = self.check_result(*result, self.options['defaultcheck'])
+            else:
+                cr = self.check_result(*result, urltest['test'])
+            print(result[2], cr)
+
 
 async def fetch(url, session):
+    '''fetch url async'''
     async with session.get(url) as resp:
-        #return await (resp.status, resp.text())
-        # return await resp.text(), url
-        # return await status(resp)
         return await resp.text(), resp.status, url
 
 
-async def main():
+async def mainloop(urls):
+    '''create tasks and wait for responses'''
+    global results
     jar = aiohttp.DummyCookieJar()
     tasks = []
     async with aiohttp.ClientSession(cookie_jar=jar) as session:
         for url in urls:
             # print("%s - %s", url, time.time())
             tasks.append(asyncio.ensure_future(fetch(url, session)))
+        results = await asyncio.gather(*tasks)
 
-        responses = await asyncio.gather(*tasks)
 
-        for text, status, url in responses:
-            print(status, url)
+def get_cli_options():
+    '''get command line options & return OptionParser'''
+    parser = OptionParser()
+    parser.add_option("-f", "--runfile", dest="runfile")
+    return parser.parse_args()
 
-start_time = float(time.time())
-loop = asyncio.get_event_loop()
-loop.run_until_complete(main())
-print('took %.3f seconds' % (time.time() - start_time))
+
+def main():
+    opts, args = get_cli_options()
+    mc = MultiCheck(opts.runfile)
+    start_time = float(time.time())
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(mainloop([chk['url'] for chk in mc.runyaml['urls']]))
+    mc.check_all_results(results)
+    print('took %.3f seconds' % (time.time() - start_time))
+
+
+if __name__ == '__main__':
+    main()
