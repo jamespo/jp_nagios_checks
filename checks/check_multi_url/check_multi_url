@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # check_multi_url ; -*-Python-*-
-# a simple nagios check to validate multiple URLs in parallel
+# a simple nagios check to validate multiple URLs in parallel using async
 # Copyright James Powell 2018 / jamespo [at] gmail [dot] com
 # This program is distributed under the terms of the GNU General Public License v3
 
@@ -10,6 +10,7 @@ import asyncio
 import aiohttp
 import time
 import yaml
+import sys
 from optparse import OptionParser
 
 # https://pawelmhm.github.io/asyncio/python/aiohttp/2016/04/22/asyncio-aiohttp.html
@@ -17,7 +18,8 @@ from optparse import OptionParser
 results = []  # store results of url fetch
 
 class MultiCheckOptions():
-    '''store the options, default, CLI or from YAML'''
+    '''store the options, default, CLI or from YAML
+    priority CLI > YAML > default'''
 
     def __init__(self):
         self.options = {}
@@ -31,6 +33,7 @@ class MultiCheckOptions():
         parser = OptionParser()
         parser.add_option("-f", "--runfile", dest="runfile")
         opts, args = parser.parse_args()
+        # set object attributes to CLI args
         for opt in [x.dest for x in parser._get_all_options()[1:]]:
             if getattr(opts, opt) is not None:
                 self.options[opt] = getattr(opts, opt)
@@ -47,7 +50,7 @@ class MultiCheck():
     def parse_runfile(runfile):
         '''parse runfile & create check objects'''
         with open(runfile) as f:
-            return yaml.load(f)
+            return yaml.safe_load(f)
 
     @staticmethod
     def check_result(text, status, url, test):
@@ -92,7 +95,10 @@ async def mainloop(urls):
 
 
 def main():
+    '''create options & check objects, run async loop & check results'''
     mco = MultiCheckOptions()
+    if mco.options.get('runfile') is None:
+        sys.exit('No runfile specified - quitting')
     mc = MultiCheck(mco)
     start_time = float(time.time())
     loop = asyncio.get_event_loop()
