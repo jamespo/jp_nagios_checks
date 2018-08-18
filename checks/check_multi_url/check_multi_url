@@ -8,6 +8,7 @@
 from collections import namedtuple
 import asyncio
 import aiohttp
+import re
 import time
 import yaml
 import sys
@@ -43,7 +44,8 @@ class MultiCheck():
     '''parse yaml, run checks'''
 
     def __init__(self, mco):
-        self.mco = mco
+        self.results = []
+        self.mco = mco    # MultiCheckOptions
         self.runyaml = self.parse_runfile(mco.options['runfile'])
 
     @staticmethod
@@ -61,14 +63,14 @@ class MultiCheck():
             return int(checkmatch) == int(status)
         elif checktype == 're':
             # regexp match check
-            search_res = re.search(checkmatch, self.content, re.MULTILINE)
+            search_res = re.search(checkmatch, text, re.MULTILINE)
             return search_res is not None
 
 
-    def check_all_results(self, results):
+    def check_all_results(self):
         '''check if results match tests'''
         # presumes result urls maintain order
-        for result, urltest in zip(results, self.runyaml['urls']):
+        for result, urltest in zip(self.results, self.runyaml['urls']):
             if 'test' not in urltest:
                 cr = self.check_result(*result, self.mco.options['defaultcheck'])
             else:
@@ -76,22 +78,24 @@ class MultiCheck():
             print(result[2], cr)
 
 
-async def fetch(url, session):
-    '''fetch url async'''
-    async with session.get(url) as resp:
-        return await resp.text(), resp.status, url
+    @staticmethod
+    async def fetch(url, session):
+        '''fetch url async'''
+        async with session.get(url) as resp:
+            return await resp.text(), resp.status, url
 
 
-async def mainloop(urls):
-    '''create tasks and wait for responses'''
-    global results
-    jar = aiohttp.DummyCookieJar()
-    tasks = []
-    async with aiohttp.ClientSession(cookie_jar=jar) as session:
-        for url in urls:
-            # print("%s - %s", url, time.time())
-            tasks.append(asyncio.ensure_future(fetch(url, session)))
-        results = await asyncio.gather(*tasks)
+    async def mainloop(self):
+        '''create tasks and wait for responses'''
+        jar = aiohttp.DummyCookieJar()
+        timeout = aiohttp.ClientTimeout(total=self.mco.options['timeout'])
+        tasks = []
+        async with aiohttp.ClientSession(cookie_jar=jar, \
+                                         timeout=timeout) as session:
+            for url in [chk['url'] for chk in self.runyaml['urls']]:
+                # print("%s - %s", url, time.time())
+                tasks.append(asyncio.ensure_future(self.fetch(url, session)))
+            self.results = await asyncio.gather(*tasks)
 
 
 def main():
@@ -102,8 +106,8 @@ def main():
     mc = MultiCheck(mco)
     start_time = float(time.time())
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(mainloop([chk['url'] for chk in mc.runyaml['urls']]))
-    mc.check_all_results(results)
+    loop.run_until_complete(mc.mainloop())
+    mc.check_all_results()
     print('took %.3f seconds' % (time.time() - start_time))
 
 
