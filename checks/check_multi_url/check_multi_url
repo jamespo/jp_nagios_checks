@@ -16,8 +16,6 @@ from optparse import OptionParser
 
 # https://pawelmhm.github.io/asyncio/python/aiohttp/2016/04/22/asyncio-aiohttp.html
 
-results = []  # store results of url fetch
-
 class MultiCheckOptions():
     '''store the options, default, CLI or from YAML
     priority CLI > YAML > default'''
