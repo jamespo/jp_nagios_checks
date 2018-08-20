@@ -53,8 +53,9 @@ class MultiCheck():
             return yaml.safe_load(f)
 
     @staticmethod
-    def check_result(text, status, url, test):
+    def check_result(text, status, url, req_time, test):
         '''individually check page result'''
+        # print(url, req_time)   # DEBUG
         checktype, checkmatch = test.split(':', 1)
         if checktype == 'code':
             # http status code check
@@ -79,8 +80,9 @@ class MultiCheck():
     @staticmethod
     async def fetch(url, session):
         '''fetch url async'''
+        req_start_time = float(time.time())
         async with session.get(url) as resp:
-            return await resp.text(), resp.status, url
+            return await resp.text(), resp.status, url, time.time() - req_start_time
 
 
     async def mainloop(self):
