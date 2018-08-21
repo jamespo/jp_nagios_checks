@@ -16,6 +16,7 @@ from optparse import OptionParser
 
 # https://pawelmhm.github.io/asyncio/python/aiohttp/2016/04/22/asyncio-aiohttp.html
 
+
 class MultiCheckOptions():
     '''store the options, default, CLI or from YAML
     priority CLI > YAML > default'''
@@ -25,7 +26,6 @@ class MultiCheckOptions():
         self.options['timeout'] = 20
         self.options['defaultcheck'] = 'code:200'
         self.get_cli_options()  # update self.options with CLI args
-
 
     def get_cli_options(self):
         '''get command line options & return OptionParser'''
@@ -64,7 +64,9 @@ class MultiCheck():
             # regexp match check
             search_res = re.search(checkmatch, text, re.MULTILINE)
             return search_res is not None
-
+        elif checktype == 'duration':
+            # TODO: support checks based on request duration
+            pass
 
     def check_all_results(self):
         '''check if results match tests'''
@@ -76,7 +78,6 @@ class MultiCheck():
                 cr = self.check_result(*result, urltest['test'])
             print(result[2], cr)
 
-
     @staticmethod
     async def fetch(url, session):
         '''fetch url async'''
@@ -84,13 +85,12 @@ class MultiCheck():
         async with session.get(url) as resp:
             return await resp.text(), resp.status, url, time.time() - req_start_time
 
-
     async def mainloop(self):
         '''create tasks and wait for responses'''
         jar = aiohttp.DummyCookieJar()
         timeout = aiohttp.ClientTimeout(total=self.mco.options['timeout'])
         tasks = []
-        async with aiohttp.ClientSession(cookie_jar=jar, \
+        async with aiohttp.ClientSession(cookie_jar=jar,
                                          timeout=timeout) as session:
             for url in [chk['url'] for chk in self.runyaml['urls']]:
                 # print("%s - %s", url, time.time())
