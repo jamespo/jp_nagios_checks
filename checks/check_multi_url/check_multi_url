@@ -26,6 +26,7 @@ class MultiCheckOptions():
         self.options['timeout'] = 20
         self.options['defaultcheck'] = 'code:200'
         self.get_cli_options()  # update self.options with CLI args
+        self.parse_runfile()  # populate self.runfile
 
     def get_cli_options(self):
         '''get command line options & return OptionParser'''
@@ -37,6 +38,11 @@ class MultiCheckOptions():
             if getattr(opts, opt) is not None:
                 self.options[opt] = getattr(opts, opt)
 
+    def parse_runfile(self):
+        '''parse runfile & create check object'''
+        with open(self.options['runfile']) as f:
+            self.runfile = yaml.safe_load(f)
+
 
 class MultiCheck():
     '''parse yaml, run checks'''
@@ -44,13 +50,6 @@ class MultiCheck():
     def __init__(self, mco):
         self.results = []
         self.mco = mco    # MultiCheckOptions
-        self.runyaml = self.parse_runfile(mco.options['runfile'])
-
-    @staticmethod
-    def parse_runfile(runfile):
-        '''parse runfile & create check objects'''
-        with open(runfile) as f:
-            return yaml.safe_load(f)
 
     @staticmethod
     def check_result(text, status, url, req_time, test):
@@ -71,12 +70,15 @@ class MultiCheck():
     def check_all_results(self):
         '''check if results match tests'''
         # presumes result urls maintain order
-        for result, urltest in zip(self.results, self.runyaml['urls']):
+        for result, urltest in zip(self.results, self.mco.runfile['urls']):
             if 'test' not in urltest:
                 cr = self.check_result(*result, self.mco.options['defaultcheck'])
             else:
                 cr = self.check_result(*result, urltest['test'])
+            # update check object
+            urltest['result'] = cr
             print(result[2], cr)
+        print(self.mco.runfile)   # DEBUG
 
     @staticmethod
     async def fetch(url, session):
@@ -92,7 +94,7 @@ class MultiCheck():
         tasks = []
         async with aiohttp.ClientSession(cookie_jar=jar,
                                          timeout=timeout) as session:
-            for url in [chk['url'] for chk in self.runyaml['urls']]:
+            for url in [chk['url'] for chk in self.mco.runfile['urls']]:
                 # print("%s - %s", url, time.time())
                 tasks.append(asyncio.ensure_future(self.fetch(url, session)))
             self.results = await asyncio.gather(*tasks)
