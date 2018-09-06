@@ -17,8 +17,8 @@ from optparse import OptionParser
 # https://pawelmhm.github.io/asyncio/python/aiohttp/2016/04/22/asyncio-aiohttp.html
 
 
-class MultiCheckOptions():
-    '''store the options, default, CLI or from YAML
+class MultiCheck():
+    '''a set of URLs to check with parameters taken from defaults, CLI or from YAML source check file itself
     priority CLI > YAML > default'''
 
     def __init__(self):
@@ -45,12 +45,12 @@ class MultiCheckOptions():
             self.runfile = yaml.safe_load(f)
 
 
-class MultiCheck():
-    '''take MultiCheckOptions arg, get urls & check them'''
+class CheckRunner():
+    '''take MultiCheck arg, get urls & check them'''
 
     def __init__(self, mco):
         self.results = []
-        self.mco = mco    # MultiCheckOptions
+        self.mco = mco    # MultiCheck
 
     @staticmethod
     def check_result(text, status, url, req_time, test):
@@ -67,7 +67,7 @@ class MultiCheck():
         elif checktype == 'duration':
             if checkmatch[0] == '<':
                 # only less than supported for now
-                return float(req_time) < float(checkmatch[1:])
+                return req_time < float(checkmatch[1:])
         # unknown check?
         return False
 
@@ -81,7 +81,7 @@ class MultiCheck():
                 cr = self.check_result(*result, urltest['test'])
             # update check object with test result & time taken
             urltest['check_ok'] = cr
-            urltest['check_duration'] = "%0.3f" % result[3]  # to 3dp
+            urltest['check_duration'] = result[3]
             print(result[2], cr)  # DEBUG
         del self.results          # cleanup
         print(self.mco.runfile)   # DEBUG
@@ -89,34 +89,40 @@ class MultiCheck():
     @staticmethod
     async def fetch(url, session):
         '''fetch url async - returns content, http status, url and request time'''
-        req_start_time = float(time.time())
+        req_start_time = CheckRunner.nowtime()
         async with session.get(url) as resp:
-            return await resp.text(), resp.status, url, time.time() - req_start_time
+            return await resp.text(), resp.status, url, \
+                CheckRunner.nowtime(req_start_time)
 
     async def mainloop(self):
         '''create tasks and wait for responses & update self.results'''
         jar = aiohttp.DummyCookieJar()
         timeout = aiohttp.ClientTimeout(total=self.mco.options['total_timeout'])
         tasks = []
-        self.start_time = float(time.time())
+        self.mco.runfile['start_time'] = self.nowtime()
         async with aiohttp.ClientSession(cookie_jar=jar,
                                          timeout=timeout) as session:
             for url in [chk['url'] for chk in self.mco.runfile['urls']]:
                 tasks.append(asyncio.ensure_future(self.fetch(url, session)))
             self.results = await asyncio.gather(*tasks)
-        self.finish_time = float(time.time())
+        self.mco.runfile['finish_time'] = self.nowtime()
 
+    @staticmethod
+    def nowtime(start_time = 0.0):
+        '''returns the time as a float to 3dp or time diff if start_time provided'''
+        return float("%0.3f" % (float(time.time() - start_time)))
 
+    
 def main():
     '''create options & check objects, run async loop & check results'''
-    mco = MultiCheckOptions()
+    mco = MultiCheck()
     if mco.options.get('runfile') is None:
         sys.exit('No runfile specified - quitting')
-    mc = MultiCheck(mco)
+    cr = CheckRunner(mco)
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(mc.mainloop())
-    mc.check_all_results()
-    print('took %.3f seconds' % (mc.finish_time - mc.start_time))
+    loop.run_until_complete(cr.mainloop())
+    cr.check_all_results()
+    # print('took %.3f seconds' % (cr.finish_time - cr.start_time))
 
 
 if __name__ == '__main__':
