@@ -18,8 +18,8 @@ from optparse import OptionParser
 
 
 class MultiCheck():
-    '''a set of URLs to check with parameters taken from defaults, CLI or from YAML source check file itself
-    priority CLI > YAML > default'''
+    '''a set of URLs to check with parameters taken from defaults, CLI or
+    from YAML source check file itself priority CLI > YAML > default'''
 
     def __init__(self):
         self.options = {}
@@ -53,21 +53,21 @@ class CheckRunner():
         self.mco = mco    # MultiCheck
 
     @staticmethod
-    def check_result(text, status, url, req_time, test):
-        '''individually check page result'''
+    def check_result(result, test):
+        '''individually check page result - takes FetchResult & test'''
         # print(url, req_time)   # DEBUG
         checktype, checkmatch = test.split(':', 1)
         if checktype == 'code':
             # http status code check
-            return int(checkmatch) == int(status)
+            return int(checkmatch) == int(result.status)
         elif checktype == 're':
             # regexp match check
-            search_res = re.search(checkmatch, text, re.MULTILINE)
+            search_res = re.search(checkmatch, result.text, re.MULTILINE)
             return search_res is not None
         elif checktype == 'duration':
             if checkmatch[0] == '<':
                 # only less than supported for now
-                return req_time < float(checkmatch[1:])
+                return result.req_duration < float(checkmatch[1:])
         # unknown check?
         return False
 
@@ -76,12 +76,12 @@ class CheckRunner():
         # presumes result urls maintain order
         for result, urltest in zip(self.results, self.mco.runfile['urls']):
             if 'test' not in urltest:
-                cr = self.check_result(*result, self.mco.options['defaultcheck'])
+                cr = self.check_result(result, self.mco.options['defaultcheck'])
             else:
-                cr = self.check_result(*result, urltest['test'])
+                cr = self.check_result(result, urltest['test'])
             # update check object with test result & time taken
             urltest['check_ok'] = cr
-            urltest['check_duration'] = result[3]
+            urltest['check_duration'] = result.req_duration
             print(result[2], cr)  # DEBUG
         del self.results          # cleanup
         print(self.mco.runfile)   # DEBUG
@@ -90,9 +90,11 @@ class CheckRunner():
     async def fetch(url, session):
         '''fetch url async - returns content, http status, url and request time'''
         req_start_time = CheckRunner.nowtime()
+        FetchResult = namedtuple('FetchResult', 'content status url req_duration')
         async with session.get(url) as resp:
-            return await resp.text(), resp.status, url, \
-                CheckRunner.nowtime(req_start_time)
+            content = await resp.text()
+            return FetchResult(content, resp.status, url,
+                               CheckRunner.nowtime(req_start_time))
 
     async def mainloop(self):
         '''create tasks and wait for responses & update self.results'''
@@ -108,11 +110,11 @@ class CheckRunner():
         self.mco.runfile['finish_time'] = self.nowtime()
 
     @staticmethod
-    def nowtime(start_time = 0.0):
+    def nowtime(start_time=0.0):
         '''returns the time as a float to 3dp or time diff if start_time provided'''
         return float("%0.3f" % (float(time.time() - start_time)))
 
-    
+
 def main():
     '''create options & check objects, run async loop & check results'''
     mco = MultiCheck()
