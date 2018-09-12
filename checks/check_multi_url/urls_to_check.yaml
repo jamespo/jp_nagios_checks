@@ -1,5 +1,6 @@
 ---
-timeout: 20
+options:
+  - total_timeout: 20
 
 urls:
   - url: http://www.bbc.co.uk

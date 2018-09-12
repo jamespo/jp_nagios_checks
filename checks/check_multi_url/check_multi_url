@@ -23,15 +23,21 @@ class MultiCheck():
 
     def __init__(self):
         self.options = {}
-        self.options['total_timeout'] = 20
-        self.options['defaultcheck'] = 'code:200'
         self.get_cli_options()  # update self.options with CLI args
-        self.parse_runfile()  # populate self.runfile
+        self.runfile_valid = self.parse_runfile()
+        self._set_defaults()
+
+    def _set_defaults(self):
+        '''set default options if not already set'''
+        defaults = {'total_timeout': 10,
+                    'defaultcheck': 'code:200'}
+        for k, v in defaults.items():
+            self.options.setdefault(k, v)
 
     def get_cli_options(self):
         '''get command line options & return OptionParser'''
         parser = OptionParser()
-
+        parser.add_option("-r", "--resultsfile", dest="resultsfile")
         parser.add_option("-f", "--runfile", dest="runfile")
         opts, args = parser.parse_args()
         # set object attributes to CLI args
@@ -41,8 +47,18 @@ class MultiCheck():
 
     def parse_runfile(self):
         '''parse runfile & create check object'''
-        with open(self.options['runfile']) as f:
-            self.runfile = yaml.safe_load(f)
+        try:
+            with open(self.options['runfile']) as f:
+                self.runfile = yaml.safe_load(f)
+            assert isinstance(self.runfile, dict)  # basic parse check
+        except (KeyError, FileNotFoundError, AssertionError) as excep:
+            return False
+        # set MultiCheck.options
+        if self.runfile.get('options'):
+            for opt in self.runfile['options']:
+                # convert single item dict to key & value & set in self.options
+                self.options.setdefault(*list(opt.items())[0])
+        return True
 
 
 class CheckRunner():
@@ -55,7 +71,6 @@ class CheckRunner():
     @staticmethod
     def check_result(result, test):
         '''individually check page result - takes FetchResult & test'''
-        # print(url, req_time)   # DEBUG
         checktype, checkmatch = test.split(':', 1)
         if checktype == 'code':
             # http status code check
@@ -82,7 +97,6 @@ class CheckRunner():
             # update check object with test result & time taken
             urltest['check_ok'] = cr
             urltest['check_duration'] = result.req_duration
-            print(result[2], cr)  # DEBUG
         del self.results          # cleanup
         print(self.mco.runfile)   # DEBUG
 
@@ -103,6 +117,7 @@ class CheckRunner():
         tasks = []
         self.mco.runfile['start_time'] = self.nowtime()
         async with aiohttp.ClientSession(cookie_jar=jar,
+
                                          timeout=timeout) as session:
             for url in [chk['url'] for chk in self.mco.runfile['urls']]:
                 tasks.append(asyncio.ensure_future(self.fetch(url, session)))
@@ -114,17 +129,37 @@ class CheckRunner():
         '''returns the time as a float to 3dp or time diff if start_time provided'''
         return float("%0.3f" % (float(time.time() - start_time)))
 
+    def save_results(self):
+        '''save results to YAML file if filename defined'''
+        resultsfile = self.mco.options.get('resultsfile')
+        if resultsfile:
+            if resultsfile[-5:] == '.DATE':
+                # timestamp resultsfilename by replacing .DATE
+                resultsfile = resultsfile[:-4] + str(self.nowtime())
+            try:
+                with open(resultsfile, 'w') as rf:
+                    rf.write(yaml.dump(self.mco.runfile))
+            except:
+                pass
+
 
 def main():
     '''create options & check objects, run async loop & check results'''
     mco = MultiCheck()
-    if mco.options.get('runfile') is None:
-        sys.exit('No runfile specified - quitting')
+    if not mco.runfile_valid:
+        quit("Couldn't parse runfile", 3)
     cr = CheckRunner(mco)
     loop = asyncio.get_event_loop()
     loop.run_until_complete(cr.mainloop())
     cr.check_all_results()
-    # print('took %.3f seconds' % (cr.finish_time - cr.start_time))
+    cr.save_results()
+
+
+def quit(msg='', status=0):
+    '''display msg & quit'''
+    code2warn = {0: 'OK', 1: 'WARNING', 2: 'CRITICAL', 3: 'UNKNOWN'}
+    print('%s: %s' % (code2warn[status], msg))
+    sys.exit(status)
 
 
 if __name__ == '__main__':
