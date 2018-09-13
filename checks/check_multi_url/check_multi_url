@@ -90,25 +90,23 @@ class CheckRunner():
         '''check if results match tests'''
         # presumes result urls maintain order
         for result, urltest in zip(self.results, self.mco.runfile['urls']):
-            if 'test' not in urltest:
-                cr = self.check_result(result, self.mco.options['defaultcheck'])
-            else:
-                cr = self.check_result(result, urltest['test'])
             # update check object with test result & time taken
-            urltest['check_ok'] = cr
-            urltest['check_duration'] = result.req_duration
+            urltest['check_ok'] = result[0]
+            urltest['check_duration'] = result[1]
         del self.results          # cleanup
         print(self.mco.runfile)   # DEBUG
 
     @staticmethod
-    async def fetch(url, session):
+    async def fetch(url, test, session):
         '''fetch url async - returns content, http status, url and request time'''
         req_start_time = CheckRunner.nowtime()
         FetchResult = namedtuple('FetchResult', 'content status url req_duration')
         async with session.get(url) as resp:
             content = await resp.text()
-            return FetchResult(content, resp.status, url,
-                               CheckRunner.nowtime(req_start_time))
+            check_duration = CheckRunner.nowtime(req_start_time)
+            output = FetchResult(content, resp.status, url, check_duration)
+            test_result = CheckRunner.check_result(output, test)
+            return (test_result, check_duration)
 
     async def mainloop(self):
         '''create tasks and wait for responses & update self.results'''
@@ -117,10 +115,12 @@ class CheckRunner():
         tasks = []
         self.mco.runfile['start_time'] = self.nowtime()
         async with aiohttp.ClientSession(cookie_jar=jar,
-
                                          timeout=timeout) as session:
-            for url in [chk['url'] for chk in self.mco.runfile['urls']]:
-                tasks.append(asyncio.ensure_future(self.fetch(url, session)))
+            # for url in [chk['url'] for chk in self.mco.runfile['urls']]:
+            for chk in self.mco.runfile['urls']:
+                # get defaultcheck if no test defined
+                test = chk.get('test', self.mco.options['defaultcheck'])
+                tasks.append(asyncio.ensure_future(self.fetch(chk['url'], test, session)))
             self.results = await asyncio.gather(*tasks)
         self.mco.runfile['finish_time'] = self.nowtime()
 
