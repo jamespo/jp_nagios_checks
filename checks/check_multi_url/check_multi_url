@@ -115,10 +115,14 @@ class CheckRunner():
 
     def check_all_results(self):
         '''check if results match tests'''
+        self.mco.runfile['checks_ok'] = 0
+        self.mco.runfile['checks_count'] = len(self.results)
         # presumes result urls maintain order
         for result, urltest in zip(self.results, self.mco.runfile['urls']):
             # update check object with test result & time taken
             urltest['check_ok'], urltest['check_duration'] = result
+            if urltest['check_ok']:
+                self.mco.runfile['checks_ok'] += 1
         del self.results          # cleanup
         self.mco.logger.info(self.mco.runfile)
 
@@ -168,6 +172,12 @@ def main():
     cr.check_all_results()
     if mco.options.get('resultsfile') is not None:
         cr.save_results()
+    if mco.runfile['checks_ok'] == mco.runfile['checks_count']:
+        rc = 0
+    else:
+        rc = 2
+    quit('%s/%s checks passed' % (mco.runfile['checks_ok'],
+                                  mco.runfile['checks_count']), rc)
 
 
 def quit(msg='', status=0):
