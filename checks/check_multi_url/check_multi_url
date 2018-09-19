@@ -85,7 +85,7 @@ class MultiCheck():
             with open(resultsfile, 'w') as rf:
                 rf.write(yaml.dump(self.mco.runfile))
         except:
-            self.logger.error('blah')
+            self.logger.error("Can't write to %s" % resultsfile)
 
 
 class CheckRunner():
@@ -120,7 +120,11 @@ class CheckRunner():
         # presumes result urls maintain order
         for result, urltest in zip(self.results, self.mco.runfile['urls']):
             # update check object with test result & time taken
-            urltest['check_ok'], urltest['check_duration'] = result
+            urltest['check_ok'], urltest['check_duration'] = result[:2]
+            # add info field if not None
+            if result[2] is not None:
+                urltest['info'] = str(result[2])
+                self.mco.logger.debug(urltest['info'])
             if urltest['check_ok']:
                 self.mco.runfile['checks_ok'] += 1
         del self.results          # cleanup
@@ -128,15 +132,18 @@ class CheckRunner():
 
     @staticmethod
     async def fetch(url, test, session):
-        '''fetch url async - returns content, http status, url and request time'''
+        '''fetch url async - returns test status, duration & info'''
         req_start_time = CheckRunner.nowtime()
         FetchResult = namedtuple('FetchResult', 'content status url req_duration')
-        async with session.get(url) as resp:
-            content = await resp.text()
-            check_duration = CheckRunner.nowtime(req_start_time)
-            output = FetchResult(content, resp.status, url, check_duration)
-            test_result = CheckRunner.check_result(output, test)
-            return (test_result, check_duration)
+        try:
+            async with session.get(url) as resp:
+                content = await resp.text()
+                check_duration = CheckRunner.nowtime(req_start_time)
+                output = FetchResult(content, resp.status, url, check_duration)
+                test_result = CheckRunner.check_result(output, test)
+                return test_result, check_duration, None
+        except (aiohttp.client_exceptions.ClientConnectorError) as excep:
+            return False, 0.0, excep
 
     async def mainloop(self):
         '''create tasks and wait for responses & update self.results'''
@@ -172,10 +179,8 @@ def main():
     cr.check_all_results()
     if mco.options.get('resultsfile') is not None:
         cr.save_results()
-    if mco.runfile['checks_ok'] == mco.runfile['checks_count']:
-        rc = 0
-    else:
-        rc = 2
+    all_passed = mco.runfile['checks_ok'] == mco.runfile['checks_count']
+    rc = (0 if all_passed else 2)
     quit('%s/%s checks passed' % (mco.runfile['checks_ok'],
                                   mco.runfile['checks_count']), rc)
 
