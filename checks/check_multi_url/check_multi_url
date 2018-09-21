@@ -89,7 +89,7 @@ class MultiCheck():
 
 
 class CheckRunner():
-    '''take MultiCheck arg, get urls & check them'''
+    '''take MultiCheck obj, get urls & check them, updating obj'''
 
     def __init__(self, mco):
         self.results = []
@@ -114,7 +114,7 @@ class CheckRunner():
         return False
 
     def check_all_results(self):
-        '''check if results match tests'''
+        '''check if results match tests - update runfile with results'''
         self.mco.runfile['checks_ok'] = 0
         self.mco.runfile['checks_count'] = len(self.results)
         # presumes result urls maintain order
