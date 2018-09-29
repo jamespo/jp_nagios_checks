@@ -6,6 +6,7 @@
 # This program is distributed under the terms of the GNU General Public License v3
 
 from collections import namedtuple
+from concurrent.futures._base import TimeoutError
 import asyncio
 import aiohttp
 import logging
@@ -94,6 +95,7 @@ class CheckRunner():
     def __init__(self, mco):
         self.results = []
         self.mco = mco    # MultiCheck
+        self.info = ''
 
     @staticmethod
     def check_result(result, test):
@@ -116,7 +118,8 @@ class CheckRunner():
     def check_all_results(self):
         '''check if results match tests - update runfile with results'''
         self.mco.runfile['checks_ok'] = 0
-        self.mco.runfile['checks_count'] = len(self.results)
+        self.mco.runfile['checks_completed'] = len(self.results)
+        self.mco.runfile['checks_count'] = len(self.mco.runfile['urls'])
         # presumes result urls maintain order
         for result, urltest in zip(self.results, self.mco.runfile['urls']):
             # update check object with test result & time taken
@@ -159,7 +162,14 @@ class CheckRunner():
                 test = chk.get('test', self.mco.options['defaultcheck'])
                 tasks.append(asyncio.ensure_future(self.fetch(chk['url'],
                                                               test, session)))
-            self.results = await asyncio.gather(*tasks)
+            try:
+                self.results = await asyncio.gather(*tasks)
+            except TimeoutError:
+                # exceeded total_timeout
+                error = 'Exceeded total timeout (%ss)' % \
+                    self.mco.options['total_timeout']
+                self.mco.logger.warning(error)
+                self.info = error
         self.mco.runfile['finish_time'] = self.nowtime()
 
     @staticmethod
@@ -182,13 +192,15 @@ def main():
     all_passed = mco.runfile['checks_ok'] == mco.runfile['checks_count']
     rc = (0 if all_passed else 2)
     quit('%s/%s checks passed' % (mco.runfile['checks_ok'],
-                                  mco.runfile['checks_count']), rc)
+                                  mco.runfile['checks_count']), cr.info, rc)
 
 
-def quit(msg='', status=0):
+def quit(msg='', info='', status=0):
     '''display msg & quit'''
     code2warn = {0: 'OK', 1: 'WARNING', 2: 'CRITICAL', 3: 'UNKNOWN'}
-    print('%s: %s' % (code2warn[status], msg))
+    if info != '':
+        info = ' (%s)' % info
+    print('%s: %s%s' % (code2warn[status], msg, info))
     sys.exit(status)
 
 
