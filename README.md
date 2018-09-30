@@ -54,6 +54,12 @@ check_c2c
 Deprecated as format on webserver changed - see check_darwin
 
 
+check_multi_url
+--------
+
+Graduated to its own repo! https://github.com/jamespo/check_multi_url
+
+
 check_darwin
 ---------
 
