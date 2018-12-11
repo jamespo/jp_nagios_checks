@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+
+# check_mailq_filter (c) jamespo[at]gmail[dot]com
+# checks postfix mailq with inclusive or exclusive regex filters
+
+import re
+from subprocess import Popen, PIPE
+from optparse import OptionParser
+
+def getopts():
+    '''get CLI args'''
+    parser = OptionParser()
+    parser.add_option("-w", dest="warn", help="warning threshold",
+                      default=5)
+    parser.add_option("-c", dest="crit", help="critical threshold",
+                      default=15)
+    parser.add_option("-i", "--incregex", dest="incregex",
+                      help="regex to include in count")
+    parser.add_option("-x", "--excregex", dest="excregex",
+                      help="regex to exclude in count")
+    (opts, args) = parser.parse_args()
+    return opts
+
+def run_mailq(exe = '/usr/bin/mailq'):
+    '''run the mailq cmd'''
+    cmd = (exe)
+    p = Popen([*cmd], stdout=PIPE, stderr=PIPE)
+    (stdout, stderr) = p.communicate()
+    if os.getenv("DEBUG") is not None:
+        print(stdout, stderr) # DEBUG
+    rc = p.returncode
+    return (stdout, stderr, rc)
+
+
+def main():
+    '''get args, run mailq, filter output & check status'''
+    opts = getopts()
+    run_mailq()
+
+
+if __name__ == '__main__':
+    main()
+    
