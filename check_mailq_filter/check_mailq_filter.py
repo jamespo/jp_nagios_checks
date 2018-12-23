@@ -6,12 +6,12 @@
 # Filter is based on first line of queue entry, eg
 # 1CCBE6000F1    27748 Tue Dec 18 03:54:08  notification@facebookmail.com
 
-
 import os
 import re
 import sys
 from subprocess import Popen, PIPE
 from optparse import OptionParser
+
 
 def getopts():
     '''get CLI args'''
@@ -27,15 +27,16 @@ def getopts():
     (opts, args) = parser.parse_args()
     return opts
 
-def run_mailq(exe = '/usr/bin/mailq'):
+
+def run_mailq(exe=None):
     '''run the mailq cmd and return output & rc'''
-    # exe = '/usr/bin/cat'  # DEBUG
-    # p = Popen([exe, './test.mailq'], stdout=PIPE, stderr=PIPE)  # DEBUG
-    p = Popen([exe], stdout=PIPE, stderr=PIPE)
+    if exe is None:
+        exe = ['/usr/bin/mailq']
+    p = Popen(exe, stdout=PIPE, stderr=PIPE)
     (stdout, stderr) = p.communicate()
     stdout, stderr = stdout.decode("utf-8"), stderr.decode("utf-8")
     if os.getenv("DEBUG") is not None:
-        print(stdout, stderr) # DEBUG
+        print(stdout, stderr)  # DEBUG
     rc = p.returncode
     return stdout, stderr, rc
 
@@ -45,7 +46,7 @@ def check_mailq(stdout, stderr, rc, incregex, excregex):
     if 'Mail queue is empty' in stdout:
         return 0, 0, 0
     total_mails, excluded_from_q, included_in_q = 0, 0, 0
-    lineregex = re.compile('[A-F0-9]{11}    [0-9]+')
+    lineregex = re.compile('[A-F0-9]{11} +[0-9]+')
     for line in stdout.split("\n"):
         if re.match(lineregex, line):
             total_mails += 1
@@ -72,6 +73,7 @@ def status(total_mails, excluded_from_q, included_in_q, opts):
         status_str = "OK: %s" % status_str
         rc = 0
     return status_str, rc
+
 
 def compregex(regex):
     '''compile regex'''

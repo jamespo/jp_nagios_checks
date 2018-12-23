@@ -41,3 +41,5 @@ nosetests.xml
 .idea/
 
 .gitignore
+
+.pytest_cache/
