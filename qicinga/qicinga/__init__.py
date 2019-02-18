@@ -49,7 +49,7 @@ def get_page(ic_url, user, pw, hostname):
 
 def read_json(icinga_json):
     '''parse json into data structure'''
-    icinga_status = json.loads(icinga_json)
+    icinga_status = json.loads(icinga_json.replace('\t', ' '))  # cleanup output
     return icinga_status
 
 
