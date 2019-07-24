@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+from operator import gt, lt
 from optparse import OptionParser
 import re
 import sys
@@ -17,31 +18,49 @@ class PressureCLI():
         '''get cli args'''
         parser = OptionParser()
         parser.add_option("-w", dest="warning",
-                          default='somecpu10>0.2,fullio10>0.2,fullmemory10>0.2',
+                          default='somecpu10<0.2,fullio10<0.2,fullmemory10<0.2',
                           help="warning thresholds")
         parser.add_option("-c", dest="critical",
-                          default='somecpu10>0.5,fullio10>0.5,fullmemory10>0.5',
+                          default='somecpu10<0.5,fullio10<0.5,fullmemory10<0.5',
                           help="critical thresholds")
         (options, args) = parser.parse_args()
         return options
 
     @staticmethod
     def parse_cli(options):
+        '''parse the warning & critical thresholds'''
         parsed_chks = {}
-        for param in options.__dict__:   # param = warning or critical
+        for param in ('warning', 'critical'):
             chklevel = {}
             parsed_chks[param] = chklevel
             checks = getattr(options, param).split(",")
             for check in checks:
-                fieldsmatch = re.match('(....)(.+)(>|<)(.+)$', check)
+                fieldsmatch = re.match('(full|some)(cpu|io|memory)(\d+)(>|<)(.+)$', check)
                 assert fieldsmatch is not None
-                scope, subsys, op, threshold = fieldsmatch.groups()
+                scope, subsys, period, op, threshold = fieldsmatch.groups()
+                threshold = float(threshold)
+                fields = (scope, 'avg' + period, op, threshold)
                 if chklevel.get(subsys):
-                    chklevel[subsys].append((scope, op, threshold))
+                    chklevel[subsys].append(fields)  # exists, append
                 else:
-                    chklevel[subsys] = [(scope, op, threshold)]
+                    chklevel[subsys] = [fields]
         return parsed_chks
 
+    def run_checks(self, presstats):
+        '''run all the checks'''
+        for param in ('critical', 'warning'):
+            for subsys in self.checks[param].keys():
+                for chk in self.checks[param][subsys]:
+                    self.run_check(chk, subsys, presstats)
+
+    @staticmethod
+    def run_check(check, subsys, presstats):
+        '''run an individual check'''
+        scope, period, op, threshold = check
+        str2op = { '>' : gt, '<' : lt }
+        if str2op[op](threshold, presstats[subsys][scope][period]):
+            print('failed')  # TODO: finish off
+                    
     
 def output(rc, msg):
     '''format rc & output msg & quit'''
@@ -86,9 +105,10 @@ class Pressure():
 
 def main():
     '''get args, read pressure'''
-    checks = PressureCLI().checks
+    pc = PressureCLI()
     p = Pressure()
-    print(checks)  # DEBUG
+    pc.run_checks(p.presstats)
+    print(pc.checks)  # DEBUG
     print(p.presstats)  # DEBUG
     if p.presstats is None:
         output(3, "Can't open /proc/pressure/. Supported on 4.2+ kernels only")
