@@ -2,22 +2,47 @@
 
 from __future__ import print_function
 from optparse import OptionParser
+import re
 import sys
 
 
-def get_cli_args():
-    '''get cli args'''
-    parser = OptionParser()
-    parser.add_option("-w", dest="warning",
-                      default='cpu10>0.2,fullio10>0.2,fullmemory10>0.2',
-                      help="warning thresholds")
-    parser.add_option("-c", dest="critical",
-                      default='cpu10>0.5,fullio10>0.5,fullmemory10>0.5',
-                      help="critical thresholds")
-    (options, args) = parser.parse_args()
-    return options
+class PressureCLI():
 
+    def __init__(self):
+        options = self.get_cli_args()
+        self.checks = self.parse_cli(options)
+        
+    @staticmethod
+    def get_cli_args():
+        '''get cli args'''
+        parser = OptionParser()
+        parser.add_option("-w", dest="warning",
+                          default='somecpu10>0.2,fullio10>0.2,fullmemory10>0.2',
+                          help="warning thresholds")
+        parser.add_option("-c", dest="critical",
+                          default='somecpu10>0.5,fullio10>0.5,fullmemory10>0.5',
+                          help="critical thresholds")
+        (options, args) = parser.parse_args()
+        return options
 
+    @staticmethod
+    def parse_cli(options):
+        parsed_chks = {}
+        for param in options.__dict__:   # param = warning or critical
+            chklevel = {}
+            parsed_chks[param] = chklevel
+            checks = getattr(options, param).split(",")
+            for check in checks:
+                fieldsmatch = re.match('(....)(.+)(>|<)(.+)$', check)
+                assert fieldsmatch is not None
+                scope, subsys, op, threshold = fieldsmatch.groups()
+                if chklevel.get(subsys):
+                    chklevel[subsys].append((scope, op, threshold))
+                else:
+                    chklevel[subsys] = [(scope, op, threshold)]
+        return parsed_chks
+
+    
 def output(rc, msg):
     '''format rc & output msg & quit'''
     rc2str = ('OK', 'WARNING', 'CRITICAL', 'UNKNOWN')
@@ -61,8 +86,9 @@ class Pressure():
 
 def main():
     '''get args, read pressure'''
-    args = get_cli_args()
+    checks = PressureCLI().checks
     p = Pressure()
+    print(checks)  # DEBUG
     print(p.presstats)  # DEBUG
     if p.presstats is None:
         output(3, "Can't open /proc/pressure/. Supported on 4.2+ kernels only")
