@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 from __future__ import print_function
+from collections import defaultdict
 from operator import gt, lt
 from optparse import OptionParser
 import re
@@ -18,10 +19,10 @@ class PressureCLI():
         '''get cli args'''
         parser = OptionParser()
         parser.add_option("-w", dest="warning",
-                          default='somecpu10<0.2,fullio10<0.2,fullmemory10<0.2',
+                          default='somecpu10>0.2,fullio10>0.2,fullmemory10>0.2',
                           help="warning thresholds")
         parser.add_option("-c", dest="critical",
-                          default='somecpu10<0.5,fullio10<0.5,fullmemory10<0.5',
+                          default='somecpu10>0.5,fullio10>0.5,fullmemory10>0.5',
                           help="critical thresholds")
         (options, args) = parser.parse_args()
         return options
@@ -48,20 +49,22 @@ class PressureCLI():
 
     def run_checks(self, presstats):
         '''run all the checks'''
+        result = defaultdict(list)
         for param in ('critical', 'warning'):
             for subsys in self.checks[param].keys():
                 for chk in self.checks[param][subsys]:
-                    self.run_check(chk, subsys, presstats)
+                    ok = self.run_check(chk, subsys, presstats)
+                    if not ok:
+                        # if check failed add to list
+                        result[param].append(chk)
+        return result
 
     @staticmethod
     def run_check(check, subsys, presstats):
         '''run an individual check'''
         scope, period, op, threshold = check
         str2op = { '>' : gt, '<' : lt }
-        if str2op[op](threshold, presstats[subsys][scope][period]):
-            print('failed')  # TODO: finish off
-                    
-    
+        return str2op[op](threshold, presstats[subsys][scope][period])                      
 def output(rc, msg):
     '''format rc & output msg & quit'''
     rc2str = ('OK', 'WARNING', 'CRITICAL', 'UNKNOWN')
@@ -107,9 +110,10 @@ def main():
     '''get args, read pressure'''
     pc = PressureCLI()
     p = Pressure()
-    pc.run_checks(p.presstats)
+    res = pc.run_checks(p.presstats)
     print(pc.checks)  # DEBUG
     print(p.presstats)  # DEBUG
+    print(res)  # DEBUG
     if p.presstats is None:
         output(3, "Can't open /proc/pressure/. Supported on 4.2+ kernels only")
 
