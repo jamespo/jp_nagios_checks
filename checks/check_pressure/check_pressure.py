@@ -53,18 +53,29 @@ class PressureCLI():
         for param in ('critical', 'warning'):
             for subsys in self.checks[param].keys():
                 for chk in self.checks[param][subsys]:
-                    ok = self.run_check(chk, subsys, presstats)
-                    if not ok:
+                    chk_res = self.run_check(chk, subsys, presstats)
+                    if chk_res is not None:
                         # if check failed add to list
-                        result[param].append(chk)
+                        result[param].append(chk_res)
         return result
 
     @staticmethod
     def run_check(check, subsys, presstats):
         '''run an individual check'''
         scope, period, op, threshold = check
-        str2op = { '>' : gt, '<' : lt }
-        return str2op[op](threshold, presstats[subsys][scope][period])                      
+        comp2op = { '>' : gt, '<' : lt }
+        if not comp2op[op](threshold, presstats[subsys][scope][period]):
+            # check failed
+            return PressureCLI.check2str(check, subsys)
+        else:
+            return None    
+            
+    @staticmethod
+    def check2str(check, subsys):
+        '''convert check params back to string for output'''
+        scope, period, op, threshold = check
+        return "%s-%s-%s%s%s" % (subsys, *check)
+            
 def output(rc, msg):
     '''format rc & output msg & quit'''
     rc2str = ('OK', 'WARNING', 'CRITICAL', 'UNKNOWN')
