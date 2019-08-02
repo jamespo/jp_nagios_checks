@@ -13,17 +13,17 @@ class PressureCLI():
     def __init__(self):
         options = self.get_cli_args()
         self.checks = self.parse_cli(options)
-        
+
     @staticmethod
     def get_cli_args():
         '''get cli args'''
         parser = OptionParser()
         parser.add_option("-w", dest="warning",
                           default='somecpu10>0.2,fullio10>0.2,fullmemory10>0.2',
-                          help="warning thresholds")
+                          help="warning thresholds [default: \"%default\"]")
         parser.add_option("-c", dest="critical",
                           default='somecpu10>0.5,fullio10>0.5,fullmemory10>0.5',
-                          help="critical thresholds")
+                          help="critical thresholds [default: \"%default\"]")
         (options, args) = parser.parse_args()
         return options
 
@@ -47,40 +47,28 @@ class PressureCLI():
                     chklevel[subsys] = [fields]
         return parsed_chks
 
-    def run_checks(self, presstats):
-        '''run all the checks'''
-        result = defaultdict(list)
-        for param in ('critical', 'warning'):
-            for subsys in self.checks[param].keys():
-                for chk in self.checks[param][subsys]:
-                    chk_res = self.run_check(chk, subsys, presstats)
-                    if chk_res is not None:
-                        # if check failed add to list
-                        result[param].append(chk_res)
-        return result
-
-    @staticmethod
-    def run_check(check, subsys, presstats):
-        '''run an individual check'''
-        scope, period, op, threshold = check
-        comp2op = { '>' : gt, '<' : lt }
-        if not comp2op[op](threshold, presstats[subsys][scope][period]):
-            # check failed
-            return PressureCLI.check2str(check, subsys)
-        else:
-            return None    
-            
     @staticmethod
     def check2str(check, subsys):
         '''convert check params back to string for output'''
         scope, period, op, threshold = check
         return "%s-%s-%s%s%s" % (subsys, *check)
-            
+
+
 def output(rc, msg):
     '''format rc & output msg & quit'''
     rc2str = ('OK', 'WARNING', 'CRITICAL', 'UNKNOWN')
     print(rc2str[rc] + ': ' + msg)
     sys.exit(rc)
+
+
+def check_results(res):
+    if len(res) == 0:
+        output(0, 'All under threshold')
+    else:
+        for sevnum, severity in ((2, 'critical'), (1, 'warning')):
+            if res.get(severity):
+                output(sevnum, ",".join(res[severity]))
+    output(3, '')
 
 
 class Pressure():
@@ -93,7 +81,7 @@ class Pressure():
     def cleandata(lines):
         '''parse the pressure output'''
         parsedlines = {}
-        for line in lines:
+        for line in lines.strip().split("\n"):
             stattype, stats = line.split(" ", 1)  # get some/full
             parsedlines[stattype] = {}
             for stat in stats.split(" "):
@@ -109,24 +97,47 @@ class Pressure():
         for monitor in ('cpu', 'io', 'memory'):
             try:
                 with open('/proc/pressure/%s' % monitor) as pres:
-                    # cleanup line(s), split some/full if available & parse via cleandata
-                    presstats[monitor] = Pressure.cleandata(pres.read().strip().split("\n"))
+                    # parse pressure file with cleandata
+                    presstats[monitor] = Pressure.cleandata(pres.read())
             except:
                 return None
         return presstats
 
+    def run_checks(self, checks):
+        '''run all the checks against stats'''
+        result = defaultdict(list)
+        for param in ('critical', 'warning'):
+            for subsys in checks[param].keys():
+                for chk in checks[param][subsys]:
+                    chk_res = self.run_check(chk, subsys)
+                    if chk_res is not None:
+                        # if check failed add to list
+                        result[param].append(chk_res)
+        return result
+
+    def run_check(self, check, subsys):
+        '''run an individual check'''
+        scope, period, op, threshold = check
+        comp2op = {'>': gt, '<': lt}
+        if not comp2op[op](threshold, self.presstats[subsys][scope][period]):
+            # check failed
+            return PressureCLI.check2str(check, subsys)
+        else:
+            return None
 
 
 def main():
     '''get args, read pressure'''
     pc = PressureCLI()
     p = Pressure()
-    res = pc.run_checks(p.presstats)
-    print(pc.checks)  # DEBUG
-    print(p.presstats)  # DEBUG
-    print(res)  # DEBUG
+    res = p.run_checks(pc.checks)
+    # print(pc.checks)  # DEBUG
+    # print(p.presstats)  # DEBUG
+    # print(res)  # DEBUG
     if p.presstats is None:
         output(3, "Can't open /proc/pressure/. Supported on 4.2+ kernels only")
+    else:
+        check_results(res)
 
 
 if __name__ == '__main__':
