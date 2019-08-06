@@ -4,8 +4,21 @@
 # (C) James Powell jamespo [at] gmail [dot] com 2013
 # This software is licensed under the same terms as Python itself
 
-import urllib2
-import ConfigParser
+from __future__ import print_function
+try:
+        from urllib.parse import urlparse, urlencode
+        from urllib.request import urlopen, Request, HTTPPasswordMgrWithDefaultRealm, \
+            build_opener, HTTPBasicAuthHandler
+        from urllib.error import HTTPError
+except ImportError:
+        from urlparse import urlparse
+        from urllib import urlencode
+        from urllib2 import urlopen, Request, HTTPError, HTTPPasswordMgrWithDefaultRealm, \
+            build_opener, HTTPBasicAuthHandler
+try:
+    import ConfigParser
+except ImportError:
+    import configparser as ConfigParser
 import io
 import os.path
 from optparse import OptionParser
@@ -39,17 +52,17 @@ def get_page(ic_url, user, pw, hostname):
     url = ic_url + json_all_hosts_services
     logger.debug('url: ' + url)
     # authenticate
-    passman = urllib2.HTTPPasswordMgrWithDefaultRealm()
+    passman = HTTPPasswordMgrWithDefaultRealm()
     passman.add_password(None, url, user, pw)
-    urllib2.install_opener(urllib2.build_opener(urllib2.HTTPBasicAuthHandler(passman)))
-    req = urllib2.urlopen(url)
+    opener = build_opener(HTTPBasicAuthHandler(passman))
+    req = opener.open(url)
     data = req.read()
     return data
 
 
 def read_json(icinga_json):
     '''parse json into data structure'''
-    icinga_status = json.loads(icinga_json.replace('\t', ' '))  # cleanup output
+    icinga_status = json.loads(icinga_json.decode().replace('\t', ' '))  # cleanup output
     return icinga_status
 
 
@@ -89,7 +102,7 @@ def parse_checks_individual(icinga_status, options):
                                                svc['service_description'], svc['status_information'])
                 if options.showtime:
                     rstr += " - %s" % checktime(svc['last_check'])
-                print rstr
+                print(rstr)
     return rc, summ
 
 
@@ -112,7 +125,7 @@ def parse_checks_summary(summ, options):
         summary = summary.rstrip()
         sys.stdout.write(summary)
         if not options.shortsumm:
-            print
+            print()
 
 
 def readconf():
