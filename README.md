@@ -3,6 +3,10 @@ jp_nagios_checks
 
 Miscellaneous nagios checks
 
+check\_pressure
+----------
+
+Monitor /proc/pressure on 4.2+ kernel linux systems
 
 check\_init\_service
 ----------
