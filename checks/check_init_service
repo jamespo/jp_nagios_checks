@@ -17,7 +17,7 @@ class CheckInitService(object):
     @staticmethod
     def _findservice():
         '''return full path to service command'''
-        for svc in ['/usr/sbin/service', '/sbin/service']:
+        for svc in ('/bin/systemctl', '/usr/sbin/service', '/sbin/service'):
             if os.path.isfile(svc):
                 return svc
         return None
