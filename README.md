@@ -3,6 +3,11 @@ jp_nagios_checks
 
 Miscellaneous nagios checks
 
+check\_meminfo
+----------
+
+Run custom checks against the values in /proc/meminfo
+
 check\_pressure
 ----------
 
