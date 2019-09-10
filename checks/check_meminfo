@@ -1,0 +1,89 @@
+#!/usr/bin/env python3
+
+# check_meminfo ; -*-Python-*-
+# nagios/icinga check allowing you to create custom thresholds
+# based on contents of /proc/meminfo
+
+from optparse import OptionParser
+import operator
+import re
+import sys
+
+
+def getargs():
+    '''parse CLI args'''
+    parser = OptionParser()
+    parser.add_option("-w", dest="warnarg", default='Buffers/MemTotal<0.7',
+                      help="threshold for warning [default: %default]")
+    parser.add_option("-c", dest="critarg", default='Buffers/MemTotal<0.9',
+                      help="threshold for critical [default: %default]")
+    (options, args) = parser.parse_args()
+    return options
+
+
+def parsearg(critarg, warnarg):
+    '''parse threshold strings into arguments'''
+    parsed_args = []
+    for levelarg in (critarg, warnarg):
+        thresh_split = re.match('(\w+)(/|\*|\-|\+)(\w+)(>|<|=)(\d+\.?\d*)$', levelarg)
+        if thresh_split is not None:
+            parsed_args.append((thresh_split.group(1), thresh_split.group(2),
+                                thresh_split.group(3), thresh_split.group(4),
+                                float(thresh_split.group(5))))
+        else:
+            raise ValueError("Can't parse %s" % levelarg)
+    return parsed_args  # list of 2 tuples for crit & warn params
+
+
+def calc(memstats, calcargs):
+    '''do calculation, return boolean result on threshold'''
+    sym2op = {'+': operator.add,
+              '-': operator.sub,
+              '*': operator.mul,
+              '/': operator.truediv,
+              '=': operator.eq,
+              '<': operator.lt,
+              '>': operator.gt}
+    for levelarg, rc in zip(calcargs, (2, 1)):   # 2, 1 are nagios RC for crit & warning
+        numer, op, denom, comp, thresh = levelarg
+        # print('DEBUG:', numer, op, denom, comp, thresh)   # DEBUG
+        res = sym2op[op](memstats[numer], memstats[denom])
+        is_ok = sym2op[comp](res, thresh)
+        if not is_ok:
+            return (rc, "%s in breach of %s" % (res, levelarg))
+    # no thresholds breached
+    return (0, 'Under threshold')
+
+
+def getstats():
+    '''load memory stats from /proc/meminfo'''
+    memstats = {}
+    mre = re.compile('(\w+): +(\d+) ')
+    with open('/proc/meminfo') as mi:
+        for line in mi:
+            match = re.match(mre, line)
+            if match is not None:
+                memstats[match.group(1)] = int(match.group(2))
+    return memstats
+
+
+def output(rc, msg):
+    '''format rc & output msg & quit'''
+    rc2str = ('OK', 'WARNING', 'CRITICAL', 'UNKNOWN')
+    print(rc2str[rc] + ': ' + msg)
+    sys.exit(rc)
+
+
+def main():
+    opts = getargs()
+    try:
+        memstats = getstats()
+        # print(memstats)  # DEBUG
+        rc, msg = calc(memstats, parsearg(opts.critarg, opts.warnarg))
+    except:
+        output(3, 'An error occurred')
+    output(rc, msg)
+
+
+if __name__ == '__main__':
+    main()
