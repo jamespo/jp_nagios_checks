@@ -8,10 +8,28 @@ check\_meminfo
 
 Run custom checks against the values in /proc/meminfo
 
+USAGE: 
+
+     check_meminfo -w Buffers/MemTotal<0.7 -c Buffers/MemTotal<0.9
+
+This will warn if your buffer memory usage > 0.7 of total memory & go critical if it's > 0.9
+
+
 check\_pressure
 ----------
 
 Monitor /proc/pressure on 4.2+ kernel linux systems
+
+	Usage: check_pressure.py [options]
+
+	Options:
+	-h, --help   show this help message and exit
+	-w WARNING   warning thresholds [default:
+				"somecpu10>0.2,fullio10>0.2,fullmemory10>0.2"]
+	-c CRITICAL  critical thresholds [default:
+				"somecpu10>0.5,fullio10>0.5,fullmemory10>0.5"]
+
+
 
 check\_init\_service
 ----------

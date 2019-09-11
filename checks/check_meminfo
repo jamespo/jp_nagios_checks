@@ -50,7 +50,8 @@ def calc(memstats, calcargs):
         res = sym2op[op](memstats[numer], memstats[denom])
         is_ok = sym2op[comp](res, thresh)
         if not is_ok:
-            return (rc, "%s in breach of %s" % (res, levelarg))
+            return (rc, "%0.2f in breach of %s" %
+                    (res, ''.join((str(x) for x in levelarg))))
     # no thresholds breached
     return (0, 'Under threshold')
 
@@ -80,7 +81,7 @@ def main():
         memstats = getstats()
         # print(memstats)  # DEBUG
         rc, msg = calc(memstats, parsearg(opts.critarg, opts.warnarg))
-    except:
+    except ValueError:
         output(3, 'An error occurred')
     output(rc, msg)
 
