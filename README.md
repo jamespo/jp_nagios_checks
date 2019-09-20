@@ -37,22 +37,22 @@ check\_init\_service
 
 Checks on a Red Hat / Centos / Ubuntu / Debian system whether services in init are running.
 
-USAGE: check\_init\_service --services service1,service2
+	USAGE: check_init_service --services service1,service2
 
 
-PARAMETERS:
+	PARAMETERS:
 
-	--services
-		comma separated list of services to check, at least one required
+		--services
+			comma separated list of services to check, at least one required
 
-	--matchregex
-		optional regular expression to match against service svcname status
-		output. Defaults to (?:is running|start/running)
+		--matchregex
+			optional regular expression to match against service svcname status
+			output. Defaults to (?:is running|start/running)
 
-	--svccmd
-		optional. specify the "service" command for your OS (eg on Centos 7
-		this would be /bin/systemctl, on Centos 6 /sbin/service, otherwise
-		it will try & guess)
+		--svccmd
+			optional. specify the "service" command for your OS (eg on Centos 7
+			this would be /bin/systemctl, on Centos 6 /sbin/service, otherwise
+			it will try & guess)
 
 INSTALLATION
 
