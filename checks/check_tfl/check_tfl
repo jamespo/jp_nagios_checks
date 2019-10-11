@@ -8,7 +8,6 @@
 # Note: Register at http://www.tfl.gov.uk/info-for/open-data-users/ for
 # access to the datafeed
 
-import sys
 import urllib2
 import xml.etree.ElementTree as ET
 from collections import defaultdict
@@ -48,13 +47,13 @@ class tfl_util(object):
     def get_cli_options():
         parser = OptionParser()
         parser.add_option("-l", "--lines", help="comma separated list of lines",
-                          dest="lines", default=None)
+                          dest="lines", default='all')
+        parser.add_option("-k", "--appkey", help="app key",
+                          dest="app_key")
+        parser.add_option("-i", "--appid", help="app id",
+                          dest="app_id")
         (options, args) = parser.parse_args()
-        if options.lines is None or options.lines == 'all':
-            return None
-        else:
-            lines = options.lines.split(',')
-            return lines
+        return options
 
 
 class tflfeed(object):
@@ -99,12 +98,10 @@ class tflfeed(object):
 
 # start of main program
 def main():
-    lines_to_check = tfl_util.get_cli_options()
-    if len(sys.argv) < 2:
-        statstr = 'USAGE: check_tfl app_id app_key'
-        status = 3
-    else:
-        (status, statstr) = tfl_util.dl_parse_output(lines_to_check, sys.argv[1], sys.argv[2])
+    opts = tfl_util.get_cli_options()
+    lines_to_check = opts.lines.split(',')
+    status, statstr = tfl_util.dl_parse_output(lines_to_check,
+                                               opts.app_id, opts.app_key)
     print statstr
     exit(status)
 
