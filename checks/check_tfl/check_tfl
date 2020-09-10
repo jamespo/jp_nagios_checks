@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # -*- coding:utf-8 -*-
 
 # check_tfl - nagios check for Transport for London
@@ -28,10 +28,12 @@ class tfl_util(object):
     def dl_parse_output(lines_to_check, app_id, app_key):
         '''download tfl xml, parse and output status'''
         if None in (app_id, app_key):
-            feedurl = "http://api.tfl.gov.uk/TrackerNet/LineStatus"
+            # feedurl = "http://api.tfl.gov.uk/TrackerNet/LineStatus"
+            feedurl = "http://cloud.tfl.gov.uk/TrackerNet/PredictionDetailed/J/LON"
         else:
-            feedurl = "http://api.tfl.gov.uk/TrackerNet/LineStatus?app_id=%s&app_key=%s" % \
-                (app_id, app_key)
+            feedurl = "http://cloud.tfl.gov.uk/TrackerNet/PredictionDetailed/J/LON"
+            # feedurl = "http://api.tfl.gov.uk/TrackerNet/LineStatus?app_id=%s&app_key=%s" % \
+            #     (app_id, app_key)
         try:
             livefeed = urllib2.urlopen(feedurl)
             livetfl = tflfeed(livefeed)
