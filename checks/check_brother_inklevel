@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# check the inklevel of brother printer from status page (non-password protected)
+# works for HL-1212
+
+SERVER=$1
+
+INKLEVEL=$(curl -s http://$SERVER/general/status.html | xpath -n -q -e 'string(/html/body/div/div/div[2]/div[2]/div[2]/div/div/div[2]/form/div[2]/dl/dd[3]/div/table/tr[2]/td/img/@height)')
+
+echo $INKLEVEL
