@@ -28,6 +28,10 @@ class DomainExpiry(object):
             self.info = "%s not found" % (self.domain)
             return 3
         exp_date = w.expiration_date 
+        # godaddy (and others?) returns 2 expiry dates, broadly similar
+        if type(exp_date) is list:
+            print 'list'
+            exp_date = exp_date[0]
         days_diff = (exp_date - self.now).days
         if days_diff < 0:
             self.info = "%s has EXPIRED"
