@@ -1,18 +1,24 @@
 #!/bin/bash
 
 # check_mysql_dbs - run mysqlcheck as nagios check
-# (c) jamespo [at] gmail [dot] com 2017
+# (c) jamespo [at] gmail [dot] com 2021
 
 # source credentials / conf
 # example contents:
 # MYUSER=root
 # MYPASS=mysecretpassword
-# MYIGNORE="(OK$|hitcounter|locks with log tables|_log$|doesn't support check)"
+# MYIGNORE="(OK$|hitcounter|locks with log tables|_log$|doesn't support check|Using a password on the command line)"
 
 . /etc/.check_mysql_dbs_conf
 
 # If DBs OK, output should be empty
-MYCHECK=$(mysqlcheck -u $MYUSER -p${MYPASS} --all-databases 2>&1 | egrep -v "${MYIGNORE}")
+if [[ "$MYPASS" != "" ]]; then
+   # creds specified in conf
+   MYCHECK=$(mysqlcheck -u $MYUSER -p${MYPASS} --all-databases 2>&1 | egrep -v "${MYIGNORE}")
+else
+    # creds in ~/.my.cnf
+    MYCHECK=$(mysqlcheck --all-databases 2>&1 | egrep -v "${MYIGNORE}")
+fi
 
 # echo $MYCHECK
 
