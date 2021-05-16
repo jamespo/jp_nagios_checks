@@ -32,3 +32,5 @@ Misc
 ----
 
 This won't work with stock Nagios as it relies on Icinga's ability to output in JSON format.
+
+A version for Icinga 2 which is under active development is available here: https://github.com/jamespo/qicinga2
