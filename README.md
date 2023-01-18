@@ -61,6 +61,16 @@ Unless you are using systemctl (ie Systemd) you must have a sudo entry for the u
 	Defaults:nagios !requiretty
 	nagios ALL = NOPASSWD: /sbin/service * status
 
+NOTE: python 2 only - see check_startup_service for enhanced python 3 version
+
+
+check\_startup\_service
+----------
+
+Same as check_init_service but for python 3 and can also check if services are NOT running (eg for DR) by prefixing them with ^
+
+     check_startup_service --services=postfix,^httpd
+
 
 check\_jar\_sig\_expire
 ----------
