@@ -12,6 +12,8 @@ from optparse import OptionParser
 class CheckInitService(object):
     def __init__(self, options):
         self.services = options.services.split(',')
+        self.expected_services = set()
+        self.rogue_services = set()
         self.matchregex = options.matchregex
         self.svccmd = options.svccmd
 
@@ -32,34 +34,32 @@ class CheckInitService(object):
 
     def checkinits(self):
         '''check init scripts statuses'''
-        self.expected_services = dict()
-        self.rogue_services = dict()
         if self.svccmd is None: 
             svc_cmd = self._findservice()
         else:
             svc_cmd = self.svccmd
         # loop round all the services
         for servicename in self.services:
-            negate = False
+            running_is_expected = True
             clean_servicename = servicename
             # check for negation (ie - service NOT running, ^ prefix)
             if servicename[0] == '^':
                 clean_servicename = servicename[1:]
-                negate = True
+                running_is_expected = False
             cmdline = self.build_cmdline(svc_cmd, clean_servicename)
             initresults = [line.strip() for line in os.popen(cmdline).readlines()]
             # check for "running" regex in output
             for res in initresults:
-                if re.search(self.matchregex, res) is not None and not negate:
-                    self.expected_services[servicename] = res
+                if re.search(self.matchregex, res) is not None and running_is_expected:
+                    self.expected_services.add(servicename)
                     break
             # if running regex not found, check if negation applies
             if not servicename in self.expected_services:
-                if negate:
-                    # not running and that's OK
-                    self.expected_services[servicename] = res                    
+                if running_is_expected:
+                    self.rogue_services.add(servicename)
                 else:
-                    self.rogue_services[servicename] = res
+                    # not running and that's OK
+                    self.expected_services.add(servicename)
         # if # of ok results == # of services checked, all ok
         if len(self.expected_services) == len(self.services):
             return 0
