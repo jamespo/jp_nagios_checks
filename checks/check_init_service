@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # check_init_service ; -*-Python-*-
 # a simple nagios check to verify if init scripts are running
@@ -61,7 +61,7 @@ def main():
     parser.add_option("--svccmd", dest="svccmd", help="full path to command to run for check")
     (options, args) = parser.parse_args()
     if options.services is None:
-        print "UNKNOWN: No services specified"
+        print("UNKNOWN: No services specified")
         sys.exit(2)
     ci = CheckInitService(options)
     rc = ci.checkinits()
@@ -71,7 +71,7 @@ def main():
         rcstr = 'CRITICAL: Failing (' +  ','.join(ci.failing_services) + ')'
         if len(ci.running_services) > 0:
             rcstr += ' Running (' + '.'.join(ci.running_services) + ')'
-    print rcstr
+    print(rcstr)
     sys.exit(rc)
 
 if __name__ == '__main__':
