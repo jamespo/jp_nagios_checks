@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/bin/env python3
 
 # check_pywhois ; -*-Python-*-
 # a simple nagios check to verify if a given domain is due to expire
@@ -7,7 +7,7 @@
 
 import sys, re
 import datetime
-import whois    # python-whois package
+import whois    # python-whois package - pip install python-whois (NOT JUST whois)
 from optparse import OptionParser
 
 class DomainExpiry(object):
@@ -21,8 +21,8 @@ class DomainExpiry(object):
         '''check whois results for domain'''
         try:
             w = whois.whois(self.domain)
-        except whois.parser.PywhoisError, e:
-            self.info = "Unknown domain suffix for %s" % (self.domain)
+        except:
+            self.info = "Error for %s" % (self.domain)
             return 3
         if re.search(r'no match for', w.text, re.IGNORECASE):
             self.info = "%s not found" % (self.domain)
@@ -31,6 +31,9 @@ class DomainExpiry(object):
         # godaddy (and others?) returns 2 expiry dates, broadly similar
         if type(exp_date) is list:
             exp_date = exp_date[0]
+        elif exp_date is None:
+            self.info = "%s lookup failed" % (self.domain)
+            return 3
         days_diff = (exp_date - self.now).days
         if days_diff < 0:
             self.info = "%s has EXPIRED"
@@ -52,7 +55,7 @@ def main():
         help="period where expiry is critical in days")
     (options, args) = parser.parse_args()
     if options.domain is None:
-        print "UNKNOWN: No domain specified"
+        print("UNKNOWN: No domain specified")
         sys.exit(3)
     ci = DomainExpiry(options)
     rc = ci.check_whois()
@@ -64,7 +67,7 @@ def main():
         rcstr = 'CRITICAL: '
     elif rc == 3:
         rcstr = 'UNKNOWN: '
-    print rcstr + ci.info
+    print(rcstr + ci.info)
     sys.exit(rc)
 
 if __name__ == '__main__':
