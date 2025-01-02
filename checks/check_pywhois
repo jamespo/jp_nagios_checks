@@ -5,10 +5,13 @@
 # Copyright James Powell 2013 / jamespo [at] gmail [dot] com
 # This program is distributed under the terms of the GNU General Public License v3
 
+import os
 import sys, re
 import datetime
 import whois    # python-whois package - pip install python-whois (NOT JUST whois)
 from optparse import OptionParser
+
+DEBUG = False
 
 class DomainExpiry(object):
     def __init__(self, options):
@@ -21,6 +24,8 @@ class DomainExpiry(object):
         '''check whois results for domain'''
         try:
             w = whois.whois(self.domain)
+            if DEBUG:
+                print('DEBUG: %s' % w, file=sys.stderr)
         except:
             self.info = "Error for %s" % (self.domain)
             return 3
@@ -31,7 +36,7 @@ class DomainExpiry(object):
         # godaddy (and others?) returns 2 expiry dates, broadly similar
         if type(exp_date) is list:
             exp_date = exp_date[0]
-        elif exp_date is None:
+        if exp_date is None:
             self.info = "%s lookup failed" % (self.domain)
             return 3
         days_diff = (exp_date - self.now).days
@@ -71,5 +76,6 @@ def main():
     sys.exit(rc)
 
 if __name__ == '__main__':
+    DEBUG = os.getenv('CPWDEBUG', False)
     main()
 
