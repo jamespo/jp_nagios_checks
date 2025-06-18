@@ -71,6 +71,8 @@ Same as check_init_service but for python 3 and can also check if services are N
 
      check_startup_service --services=postfix,^httpd
 
+This has moved to its own repo: https://github.com/jamespo/check_startup_service
+
 
 check\_jar\_sig\_expire
 ----------
