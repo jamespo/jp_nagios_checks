@@ -1,0 +1,96 @@
+#!/bin/bash
+
+# check_file_exists - nagios / icinga check that a file (or dir/symlink/socket) exists
+# (c) jamespo [at] gmail [dot] com 2026
+
+OK=0
+WARNING=1
+CRITICAL=2
+UNKNOWN=3
+
+PROG=$(basename "$0")
+
+usage() {
+    cat <<EOF
+Usage: $PROG [-e|-f|-d|-l|-S] [-n] [-w] [-h] PATH [PATH...]
+
+Type of file to check for (default -e, last one given wins):
+  -e   any type of file (including broken symlinks)
+  -f   regular file
+  -d   directory
+  -l   symbolic link
+  -S   unix socket
+
+Options:
+  -n   negate: alert if the path DOES exist
+  -w   return WARNING instead of CRITICAL on failure
+  -h   show this help
+EOF
+}
+
+TYPE=e
+NEGATE=0
+FAIL_STATE=$CRITICAL
+FAIL_LABEL=CRITICAL
+
+while getopts ":efdlSnwh" opt; do
+    case $opt in
+        e|f|d|l|S) TYPE=$opt ;;
+        n) NEGATE=1 ;;
+        w) FAIL_STATE=$WARNING; FAIL_LABEL=WARNING ;;
+        h) usage; exit $UNKNOWN ;;
+        \?) echo "UNKNOWN: invalid option -$OPTARG"; usage; exit $UNKNOWN ;;
+    esac
+done
+shift $((OPTIND - 1))
+
+if [[ $# -eq 0 ]]; then
+    echo "UNKNOWN: no path specified"
+    usage
+    exit $UNKNOWN
+fi
+
+case $TYPE in
+    e) DESC="file" ;;
+    f) DESC="regular file" ;;
+    d) DESC="directory" ;;
+    l) DESC="symlink" ;;
+    S) DESC="unix socket" ;;
+esac
+
+# returns 0 if path matches requested type
+path_matches() {
+    local p=$1
+    case $TYPE in
+        e) [[ -e "$p" || -L "$p" ]] ;;
+        f) [[ -f "$p" ]] ;;
+        d) [[ -d "$p" ]] ;;
+        l) [[ -L "$p" ]] ;;
+        S) [[ -S "$p" ]] ;;
+    esac
+}
+
+FAILED=()
+for path in "$@"; do
+    if path_matches "$path"; then
+        [[ $NEGATE -eq 1 ]] && FAILED+=("$path")
+    else
+        [[ $NEGATE -eq 0 ]] && FAILED+=("$path")
+    fi
+done
+
+if [[ ${#FAILED[@]} -eq 0 ]]; then
+    if [[ $NEGATE -eq 1 ]]; then
+        echo "OK: no $DESC found at: $*"
+    else
+        echo "OK: $DESC exists: $*"
+    fi
+    exit $OK
+fi
+
+if [[ $NEGATE -eq 1 ]]; then
+    echo "$FAIL_LABEL: $DESC exists: ${FAILED[*]}"
+else
+    echo "$FAIL_LABEL: $DESC missing: ${FAILED[*]}"
+fi
+exit $FAIL_STATE
